@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque[opsz,wdth,wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/assets/fonts/Outfit[wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Dance Studio — Stage Lighting Dark Theme */
+    --background: 0.16 0.018 265;
+    --foreground: 0.95 0.01 90;
+    --card: 0.19 0.02 265;
+    --card-foreground: 0.95 0.01 90;
+    --popover: 0.22 0.025 265;
+    --popover-foreground: 0.95 0.01 90;
+
+    /* Warm amber-gold primary */
+    --primary: 0.75 0.15 65;
+    --primary-foreground: 0.13 0.015 265;
+
+    --secondary: 0.24 0.025 265;
+    --secondary-foreground: 0.85 0.01 90;
+
+    --muted: 0.22 0.02 265;
+    --muted-foreground: 0.6 0.015 90;
+
+    /* Coral accent */
+    --accent: 0.65 0.18 25;
+    --accent-foreground: 0.98 0.005 90;
+
+    --destructive: 0.6 0.22 25;
+    --destructive-foreground: 0.98 0.005 90;
+
+    /* Success — emerald green */
+    --success: 0.68 0.17 155;
+    --success-foreground: 0.13 0.015 265;
+
+    /* Warning — amber */
+    --warning: 0.78 0.16 70;
+    --warning-foreground: 0.13 0.015 265;
+
+    --border: 0.28 0.025 265;
+    --input: 0.26 0.02 265;
+    --ring: 0.75 0.15 65;
+
+    /* Chart colors */
+    --chart-1: 0.75 0.15 65;
+    --chart-2: 0.65 0.18 25;
+    --chart-3: 0.55 0.15 195;
+    --chart-4: 0.7 0.15 130;
+    --chart-5: 0.6 0.18 310;
+
+    /* Sidebar */
+    --sidebar: 0.14 0.02 265;
+    --sidebar-foreground: 0.9 0.01 90;
+    --sidebar-primary: 0.75 0.15 65;
+    --sidebar-primary-foreground: 0.13 0.015 265;
+    --sidebar-accent: 0.2 0.022 265;
+    --sidebar-accent-foreground: 0.9 0.01 90;
+    --sidebar-border: 0.24 0.022 265;
+    --sidebar-ring: 0.75 0.15 65;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Outfit", sans-serif;
+  }
+
+  /* Grain texture overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: oklch(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--muted-foreground));
+}
+
+/* Stage glow effect on primary elements */
+.glow-primary {
+  box-shadow: 0 0 20px oklch(var(--primary) / 0.25);
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px oklch(var(--accent) / 0.2);
+}
+
+/* Geometric sidebar pattern */
+.sidebar-pattern {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    oklch(var(--sidebar-border) / 0.3) 10px,
+    oklch(var(--sidebar-border) / 0.3) 11px
+  );
+}
