@@ -8,6 +8,17 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const _CaffeineStorageCreateCertificateResult = IDL.Record({
+  'method' : IDL.Text,
+  'blob_hash' : IDL.Text,
+});
+export const _CaffeineStorageRefillInformation = IDL.Record({
+  'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+});
+export const _CaffeineStorageRefillResult = IDL.Record({
+  'success' : IDL.Opt(IDL.Bool),
+  'topped_up_amount' : IDL.Opt(IDL.Nat),
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -25,6 +36,15 @@ export const AppUser = IDL.Record({
   'role' : IDL.Text,
   'mobileNumber' : IDL.Text,
   'isActive' : IDL.Bool,
+});
+export const Batch = IDL.Record({
+  'id' : IDL.Nat,
+  'startTime' : IDL.Text,
+  'endTime' : IDL.Text,
+  'name' : IDL.Text,
+  'daysOfWeek' : IDL.Vec(IDL.Nat),
+  'isActive' : IDL.Bool,
+  'monthlyFees' : IDL.Nat,
 });
 export const FeeAssignmentPayment = IDL.Record({
   'studentId' : IDL.Nat,
@@ -71,6 +91,7 @@ export const SoloRegistration = IDL.Record({
 export const Student = IDL.Record({
   'id' : IDL.Nat,
   'age' : IDL.Nat,
+  'dateOfBirth' : IDL.Text,
   'admissionFees' : IDL.Nat,
   'name' : IDL.Text,
   'guardianRelationship' : IDL.Text,
@@ -78,18 +99,11 @@ export const Student = IDL.Record({
   'guardianPhone' : IDL.Text,
   'gender' : IDL.Text,
   'contactNumber' : IDL.Text,
+  'guardianAadhar' : IDL.Text,
   'currentBatchId' : IDL.Opt(IDL.Nat),
   'guardianName' : IDL.Text,
+  'studentAadhar' : IDL.Text,
   'dateOfAdmission' : IDL.Text,
-});
-export const Batch = IDL.Record({
-  'id' : IDL.Nat,
-  'startTime' : IDL.Text,
-  'endTime' : IDL.Text,
-  'name' : IDL.Text,
-  'daysOfWeek' : IDL.Vec(IDL.Nat),
-  'isActive' : IDL.Bool,
-  'monthlyFees' : IDL.Nat,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const MonthlyEntry = IDL.Record({
@@ -117,6 +131,32 @@ export const YearChangeoverRecord = IDL.Record({
 });
 
 export const idlService = IDL.Service({
+  '_caffeineStorageBlobIsLive' : IDL.Func(
+      [IDL.Vec(IDL.Nat8)],
+      [IDL.Bool],
+      ['query'],
+    ),
+  '_caffeineStorageBlobsToDelete' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      ['query'],
+    ),
+  '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      [],
+      [],
+    ),
+  '_caffeineStorageCreateCertificate' : IDL.Func(
+      [IDL.Text],
+      [_CaffeineStorageCreateCertificateResult],
+      [],
+    ),
+  '_caffeineStorageRefillCashier' : IDL.Func(
+      [IDL.Opt(_CaffeineStorageRefillInformation)],
+      [_CaffeineStorageRefillResult],
+      [],
+    ),
+  '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'assignStudentToBatch' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
@@ -151,7 +191,10 @@ export const idlService = IDL.Service({
       [
         IDL.Text,
         IDL.Text,
+        IDL.Text,
         IDL.Nat,
+        IDL.Text,
+        IDL.Text,
         IDL.Text,
         IDL.Text,
         IDL.Text,
@@ -166,6 +209,7 @@ export const idlService = IDL.Service({
   'deleteBatch' : IDL.Func([IDL.Nat], [], []),
   'generateDueCard' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'getAllAppUsers' : IDL.Func([], [IDL.Vec(AppUser)], ['query']),
+  'getAllBatches' : IDL.Func([], [IDL.Vec(Batch)], ['query']),
   'getAllFeeAssignmentPaymentsForStudent' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(FeeAssignmentPayment)],
@@ -261,7 +305,10 @@ export const idlService = IDL.Service({
       [
         IDL.Nat,
         IDL.Text,
+        IDL.Text,
         IDL.Nat,
+        IDL.Text,
+        IDL.Text,
         IDL.Text,
         IDL.Text,
         IDL.Text,
@@ -276,6 +323,17 @@ export const idlService = IDL.Service({
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const _CaffeineStorageCreateCertificateResult = IDL.Record({
+    'method' : IDL.Text,
+    'blob_hash' : IDL.Text,
+  });
+  const _CaffeineStorageRefillInformation = IDL.Record({
+    'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+  });
+  const _CaffeineStorageRefillResult = IDL.Record({
+    'success' : IDL.Opt(IDL.Bool),
+    'topped_up_amount' : IDL.Opt(IDL.Nat),
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
@@ -293,6 +351,15 @@ export const idlFactory = ({ IDL }) => {
     'role' : IDL.Text,
     'mobileNumber' : IDL.Text,
     'isActive' : IDL.Bool,
+  });
+  const Batch = IDL.Record({
+    'id' : IDL.Nat,
+    'startTime' : IDL.Text,
+    'endTime' : IDL.Text,
+    'name' : IDL.Text,
+    'daysOfWeek' : IDL.Vec(IDL.Nat),
+    'isActive' : IDL.Bool,
+    'monthlyFees' : IDL.Nat,
   });
   const FeeAssignmentPayment = IDL.Record({
     'studentId' : IDL.Nat,
@@ -339,6 +406,7 @@ export const idlFactory = ({ IDL }) => {
   const Student = IDL.Record({
     'id' : IDL.Nat,
     'age' : IDL.Nat,
+    'dateOfBirth' : IDL.Text,
     'admissionFees' : IDL.Nat,
     'name' : IDL.Text,
     'guardianRelationship' : IDL.Text,
@@ -346,18 +414,11 @@ export const idlFactory = ({ IDL }) => {
     'guardianPhone' : IDL.Text,
     'gender' : IDL.Text,
     'contactNumber' : IDL.Text,
+    'guardianAadhar' : IDL.Text,
     'currentBatchId' : IDL.Opt(IDL.Nat),
     'guardianName' : IDL.Text,
+    'studentAadhar' : IDL.Text,
     'dateOfAdmission' : IDL.Text,
-  });
-  const Batch = IDL.Record({
-    'id' : IDL.Nat,
-    'startTime' : IDL.Text,
-    'endTime' : IDL.Text,
-    'name' : IDL.Text,
-    'daysOfWeek' : IDL.Vec(IDL.Nat),
-    'isActive' : IDL.Bool,
-    'monthlyFees' : IDL.Nat,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const MonthlyEntry = IDL.Record({
@@ -385,6 +446,32 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
+    '_caffeineStorageBlobIsLive' : IDL.Func(
+        [IDL.Vec(IDL.Nat8)],
+        [IDL.Bool],
+        ['query'],
+      ),
+    '_caffeineStorageBlobsToDelete' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        ['query'],
+      ),
+    '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        [],
+        [],
+      ),
+    '_caffeineStorageCreateCertificate' : IDL.Func(
+        [IDL.Text],
+        [_CaffeineStorageCreateCertificateResult],
+        [],
+      ),
+    '_caffeineStorageRefillCashier' : IDL.Func(
+        [IDL.Opt(_CaffeineStorageRefillInformation)],
+        [_CaffeineStorageRefillResult],
+        [],
+      ),
+    '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'assignStudentToBatch' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
@@ -419,7 +506,10 @@ export const idlFactory = ({ IDL }) => {
         [
           IDL.Text,
           IDL.Text,
+          IDL.Text,
           IDL.Nat,
+          IDL.Text,
+          IDL.Text,
           IDL.Text,
           IDL.Text,
           IDL.Text,
@@ -434,6 +524,7 @@ export const idlFactory = ({ IDL }) => {
     'deleteBatch' : IDL.Func([IDL.Nat], [], []),
     'generateDueCard' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'getAllAppUsers' : IDL.Func([], [IDL.Vec(AppUser)], ['query']),
+    'getAllBatches' : IDL.Func([], [IDL.Vec(Batch)], ['query']),
     'getAllFeeAssignmentPaymentsForStudent' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(FeeAssignmentPayment)],
@@ -537,7 +628,10 @@ export const idlFactory = ({ IDL }) => {
         [
           IDL.Nat,
           IDL.Text,
+          IDL.Text,
           IDL.Nat,
+          IDL.Text,
+          IDL.Text,
           IDL.Text,
           IDL.Text,
           IDL.Text,

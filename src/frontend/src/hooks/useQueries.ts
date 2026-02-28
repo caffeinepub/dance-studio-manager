@@ -250,24 +250,30 @@ export function useCreateStudent() {
     mutationFn: async (data: {
       name: string;
       dateOfAdmission: string;
+      dateOfBirth: string;
       age: bigint;
       gender: string;
       contactNumber: string;
+      studentAadhar: string;
       guardianName: string;
       guardianRelationship: string;
       guardianPhone: string;
+      guardianAadhar: string;
       admissionFees: bigint;
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.createStudent(
         data.name,
         data.dateOfAdmission,
+        data.dateOfBirth,
         data.age,
         data.gender,
         data.contactNumber,
+        data.studentAadhar,
         data.guardianName,
         data.guardianRelationship,
         data.guardianPhone,
+        data.guardianAadhar,
         data.admissionFees,
       );
     },
@@ -285,23 +291,29 @@ export function useUpdateStudent() {
     mutationFn: async (data: {
       studentId: bigint;
       name: string;
+      dateOfBirth: string;
       age: bigint;
       gender: string;
       contactNumber: string;
+      studentAadhar: string;
       guardianName: string;
       guardianRelationship: string;
       guardianPhone: string;
+      guardianAadhar: string;
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.updateStudent(
         data.studentId,
         data.name,
+        data.dateOfBirth,
         data.age,
         data.gender,
         data.contactNumber,
+        data.studentAadhar,
         data.guardianName,
         data.guardianRelationship,
         data.guardianPhone,
+        data.guardianAadhar,
       );
     },
     onSuccess: (_d, vars) => {

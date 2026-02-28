@@ -7,6 +7,23 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface Student {
+    id: bigint;
+    age: bigint;
+    dateOfBirth: string;
+    admissionFees: bigint;
+    name: string;
+    guardianRelationship: string;
+    isActive: boolean;
+    guardianPhone: string;
+    gender: string;
+    contactNumber: string;
+    guardianAadhar: string;
+    currentBatchId?: bigint;
+    guardianName: string;
+    studentAadhar: string;
+    dateOfAdmission: string;
+}
 export interface FeeAssignmentPayment {
     studentId: bigint;
     isPaid: boolean;
@@ -92,20 +109,6 @@ export interface DueCard {
 export interface UserProfile {
     name: string;
 }
-export interface Student {
-    id: bigint;
-    age: bigint;
-    admissionFees: bigint;
-    name: string;
-    guardianRelationship: string;
-    isActive: boolean;
-    guardianPhone: string;
-    gender: string;
-    contactNumber: string;
-    currentBatchId?: bigint;
-    guardianName: string;
-    dateOfAdmission: string;
-}
 export enum FeeAssignmentType {
     other = "other",
     annualDay = "annualDay",
@@ -123,11 +126,12 @@ export interface backendInterface {
     createBatch(name: string, daysOfWeek: Array<bigint>, startTime: string, endTime: string, monthlyFees: bigint): Promise<bigint>;
     createFeeAssignment(name: string, feeType: FeeAssignmentType, amount: bigint, year: bigint, studentIds: Array<bigint>, description: string): Promise<bigint>;
     createSoloProgramme(name: string, description: string, startDate: string, endDate: string, scheduleTime: string, scheduleDays: Array<bigint>): Promise<bigint>;
-    createStudent(name: string, dateOfAdmission: string, age: bigint, gender: string, contactNumber: string, guardianName: string, guardianRelationship: string, guardianPhone: string, admissionFees: bigint): Promise<bigint>;
+    createStudent(name: string, dateOfAdmission: string, dateOfBirth: string, age: bigint, gender: string, contactNumber: string, studentAadhar: string, guardianName: string, guardianRelationship: string, guardianPhone: string, guardianAadhar: string, admissionFees: bigint): Promise<bigint>;
     deactivateAppUser(userId: bigint): Promise<void>;
     deleteBatch(id: bigint): Promise<void>;
     generateDueCard(studentId: bigint, year: bigint): Promise<void>;
     getAllAppUsers(): Promise<Array<AppUser>>;
+    getAllBatches(): Promise<Array<Batch>>;
     getAllFeeAssignmentPaymentsForStudent(studentId: bigint): Promise<Array<FeeAssignmentPayment>>;
     getAllFeeAssignments(): Promise<Array<FeeAssignment>>;
     getAllPayments(): Promise<Array<FeePayment>>;
@@ -166,5 +170,5 @@ export interface backendInterface {
     seedDefaultUsers(): Promise<void>;
     updateBatch(id: bigint, name: string, daysOfWeek: Array<bigint>, startTime: string, endTime: string, monthlyFees: bigint): Promise<void>;
     updateCurrentYear(year: bigint): Promise<void>;
-    updateStudent(id: bigint, name: string, age: bigint, gender: string, contactNumber: string, guardianName: string, guardianRelationship: string, guardianPhone: string): Promise<void>;
+    updateStudent(id: bigint, name: string, dateOfBirth: string, age: bigint, gender: string, contactNumber: string, studentAadhar: string, guardianName: string, guardianRelationship: string, guardianPhone: string, guardianAadhar: string): Promise<void>;
 }

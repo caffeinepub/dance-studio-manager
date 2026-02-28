@@ -91,6 +91,7 @@ export interface SoloRegistration {
 export interface Student {
   'id' : bigint,
   'age' : bigint,
+  'dateOfBirth' : string,
   'admissionFees' : bigint,
   'name' : string,
   'guardianRelationship' : string,
@@ -98,8 +99,10 @@ export interface Student {
   'guardianPhone' : string,
   'gender' : string,
   'contactNumber' : string,
+  'guardianAadhar' : string,
   'currentBatchId' : [] | [bigint],
   'guardianName' : string,
+  'studentAadhar' : string,
   'dateOfAdmission' : string,
 }
 export interface UserProfile { 'name' : string }
@@ -113,7 +116,33 @@ export interface YearChangeoverRecord {
   'breakdownItems' : Array<OpeningBalanceItem>,
   'fromYear' : bigint,
 }
+export interface _CaffeineStorageCreateCertificateResult {
+  'method' : string,
+  'blob_hash' : string,
+}
+export interface _CaffeineStorageRefillInformation {
+  'proposed_top_up_amount' : [] | [bigint],
+}
+export interface _CaffeineStorageRefillResult {
+  'success' : [] | [boolean],
+  'topped_up_amount' : [] | [bigint],
+}
 export interface _SERVICE {
+  '_caffeineStorageBlobIsLive' : ActorMethod<[Uint8Array], boolean>,
+  '_caffeineStorageBlobsToDelete' : ActorMethod<[], Array<Uint8Array>>,
+  '_caffeineStorageConfirmBlobDeletion' : ActorMethod<
+    [Array<Uint8Array>],
+    undefined
+  >,
+  '_caffeineStorageCreateCertificate' : ActorMethod<
+    [string],
+    _CaffeineStorageCreateCertificateResult
+  >,
+  '_caffeineStorageRefillCashier' : ActorMethod<
+    [[] | [_CaffeineStorageRefillInformation]],
+    _CaffeineStorageRefillResult
+  >,
+  '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignStudentToBatch' : ActorMethod<[bigint, bigint, string], undefined>,
@@ -131,13 +160,27 @@ export interface _SERVICE {
     bigint
   >,
   'createStudent' : ActorMethod<
-    [string, string, bigint, string, string, string, string, string, bigint],
+    [
+      string,
+      string,
+      string,
+      bigint,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      bigint,
+    ],
     bigint
   >,
   'deactivateAppUser' : ActorMethod<[bigint], undefined>,
   'deleteBatch' : ActorMethod<[bigint], undefined>,
   'generateDueCard' : ActorMethod<[bigint, bigint], undefined>,
   'getAllAppUsers' : ActorMethod<[], Array<AppUser>>,
+  'getAllBatches' : ActorMethod<[], Array<Batch>>,
   'getAllFeeAssignmentPaymentsForStudent' : ActorMethod<
     [bigint],
     Array<FeeAssignmentPayment>
@@ -210,7 +253,19 @@ export interface _SERVICE {
   >,
   'updateCurrentYear' : ActorMethod<[bigint], undefined>,
   'updateStudent' : ActorMethod<
-    [bigint, string, bigint, string, string, string, string, string],
+    [
+      bigint,
+      string,
+      string,
+      bigint,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+    ],
     undefined
   >,
 }
