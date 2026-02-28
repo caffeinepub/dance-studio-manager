@@ -822,6 +822,21 @@ export function useDeactivateAppUser() {
   });
 }
 
+export function useSeedDefaultUsers() {
+  const { actor } = useActor();
+  return useQuery({
+    queryKey: ["seedDefaultUsers"],
+    queryFn: async () => {
+      if (!actor) return null;
+      await actor.seedDefaultUsers();
+      return true;
+    },
+    enabled: !!actor,
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: 3,
+  });
+}
+
 export function useLoginUser() {
   const { actor } = useActor();
   return useMutation({
@@ -830,7 +845,12 @@ export function useLoginUser() {
       password: string;
     }): Promise<AppUser | null> => {
       if (!actor) throw new Error("No actor");
-      return actor.loginUser(data.mobileNumber, data.password);
+      // Motoko ?AppUser returns as [] or [user] in JS
+      const result = await actor.loginUser(data.mobileNumber, data.password);
+      if (Array.isArray(result)) {
+        return result.length > 0 ? result[0] : null;
+      }
+      return result ?? null;
     },
   });
 }

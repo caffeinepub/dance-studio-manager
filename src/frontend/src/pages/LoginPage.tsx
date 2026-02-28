@@ -11,12 +11,18 @@ import { AlertCircle, Loader2, Lock, Phone, User, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
-import { useGuestLogin, useLoginUser } from "../hooks/useQueries";
+import {
+  useGuestLogin,
+  useLoginUser,
+  useSeedDefaultUsers,
+} from "../hooks/useQueries";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const loginUser = useLoginUser();
   const guestLoginMutation = useGuestLogin();
+  // Ensure default admin user exists on every fresh canister deploy
+  const { isLoading: seeding } = useSeedDefaultUsers();
 
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
@@ -181,15 +187,19 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              disabled={loginUser.isPending}
+              disabled={loginUser.isPending || seeding}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11 font-semibold gap-2"
             >
-              {loginUser.isPending ? (
+              {loginUser.isPending || seeding ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Lock className="w-4 h-4" />
               )}
-              {loginUser.isPending ? "Signing in..." : "Sign In"}
+              {seeding
+                ? "Initializing..."
+                : loginUser.isPending
+                  ? "Signing in..."
+                  : "Sign In"}
             </Button>
           </form>
 
