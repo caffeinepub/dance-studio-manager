@@ -8,7 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Banknote, Loader2, RefreshCw, Smartphone } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Student } from "../backend.d.ts";
@@ -55,11 +55,14 @@ function PaymentDialog({
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [remarks, setRemarks] = useState("");
+  const [paymentMode, setPaymentMode] = useState("");
   const recordPayment = useRecordFeePayment();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) return toast.error("Please enter amount");
+    if (!paymentMode)
+      return toast.error("Please select payment mode (Cash or UPI)");
     try {
       await recordPayment.mutateAsync({
         studentId,
@@ -69,6 +72,7 @@ function PaymentDialog({
         remarks,
         month: BigInt(month),
         year,
+        paymentMode,
       });
       toast.success("Payment recorded");
       onClose();
@@ -107,6 +111,35 @@ function PaymentDialog({
               min="0"
               className="bg-input border-border"
             />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm text-foreground">Payment Mode *</Label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentMode("Cash")}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                  paymentMode === "Cash"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                <Banknote className="w-4 h-4" />
+                Cash
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMode("UPI")}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                  paymentMode === "UPI"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                <Smartphone className="w-4 h-4" />
+                UPI
+              </button>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm text-foreground">Remarks</Label>
@@ -147,7 +180,6 @@ export default function DueCardModal({ student, onClose }: DueCardModalProps) {
   const { data: currentYear = BigInt(new Date().getFullYear()) } =
     useCurrentYear();
   const [selectedYear, setSelectedYear] = useState<number>(Number(currentYear));
-  const [openingBalance, setOpeningBalance] = useState("0");
   const [paymentMonth, setPaymentMonth] = useState<number | null>(null);
   const generateDueCard = useGenerateDueCard();
 
@@ -173,7 +205,6 @@ export default function DueCardModal({ student, onClose }: DueCardModalProps) {
       await generateDueCard.mutateAsync({
         studentId: student.id,
         year: BigInt(selectedYear),
-        openingBalance: BigInt(openingBalance || "0"),
       });
       toast.success("Due card generated");
     } catch (err) {
@@ -223,18 +254,6 @@ export default function DueCardModal({ student, onClose }: DueCardModalProps) {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                  Opening Balance (₹)
-                </Label>
-                <Input
-                  type="number"
-                  value={openingBalance}
-                  onChange={(e) => setOpeningBalance(e.target.value)}
-                  className="bg-input border-border w-36 h-9"
-                  min="0"
-                />
               </div>
               <Button
                 onClick={handleGenerate}

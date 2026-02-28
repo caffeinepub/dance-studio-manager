@@ -1,47 +1,138 @@
 import { cn } from "@/lib/utils";
 import {
+  BarChart2,
+  CalendarRange,
+  ClipboardList,
   LayoutDashboard,
+  LogOut,
   Menu,
   Music,
+  Shield,
   Star,
+  UserCog,
   Users,
   Wallet,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import type { Page } from "../App";
+import { useAuth } from "../contexts/AuthContext";
 
 interface SidebarProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
 }
 
-const navItems = [
-  { id: "dashboard" as Page, label: "Dashboard", icon: LayoutDashboard },
-  { id: "students" as Page, label: "Students", icon: Users },
-  { id: "batches" as Page, label: "Batches", icon: Music },
-  { id: "solo" as Page, label: "Solo Programmes", icon: Star },
-  { id: "fees" as Page, label: "Fee Collection", icon: Wallet },
+interface NavItem {
+  id: Page;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles: string[]; // which roles can see this
+}
+
+const navItems: NavItem[] = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    roles: ["admin", "staff", "user", "guest"],
+  },
+  {
+    id: "students",
+    label: "Students",
+    icon: Users,
+    roles: ["admin", "staff", "user"],
+  },
+  {
+    id: "batches",
+    label: "Batches",
+    icon: Music,
+    roles: ["admin", "staff", "user"],
+  },
+  {
+    id: "solo",
+    label: "Solo Programmes",
+    icon: Star,
+    roles: ["admin", "staff", "user"],
+  },
+  {
+    id: "fees",
+    label: "Fee Collection",
+    icon: Wallet,
+    roles: ["admin", "staff", "user"],
+  },
+  {
+    id: "feetracker",
+    label: "Fee Tracker",
+    icon: ClipboardList,
+    roles: ["admin"],
+  },
+  {
+    id: "reports",
+    label: "Reports",
+    icon: BarChart2,
+    roles: ["admin"],
+  },
+  {
+    id: "yearchangeover",
+    label: "Year Changeover",
+    icon: CalendarRange,
+    roles: ["admin"],
+  },
+  {
+    id: "users",
+    label: "User Management",
+    icon: UserCog,
+    roles: ["admin"],
+  },
 ];
+
+function getRoleLabel(role: string): string {
+  const labels: Record<string, string> = {
+    admin: "Admin",
+    staff: "Staff",
+    user: "Staff",
+    guest: "Guest",
+  };
+  return labels[role] ?? role;
+}
+
+function getRoleColor(role: string): string {
+  const colors: Record<string, string> = {
+    admin: "bg-primary/20 text-primary border-primary/30",
+    staff: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    user: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    guest: "bg-muted/50 text-muted-foreground border-border",
+  };
+  return colors[role] ?? "bg-muted/50 text-muted-foreground border-border";
+}
 
 export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { currentUser, logout } = useAuth();
+
+  const visibleItems = navItems.filter((item) =>
+    currentUser ? item.roles.includes(currentUser.role) : false,
+  );
 
   const NavContent = () => (
     <>
       {/* Logo */}
-      <div className="px-6 py-6 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-glow flex-shrink-0">
-            <span className="text-primary-foreground font-display font-bold text-lg">
-              D
-            </span>
+      <div className="px-5 py-5 border-b border-sidebar-border relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-3 relative">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-glow flex-shrink-0 overflow-hidden">
+            <img
+              src="/assets/generated/dance-studio-logo-transparent.dim_200x200.png"
+              alt="Logo"
+              className="w-8 h-8 object-contain"
+            />
           </div>
           <div>
-            <h1 className="font-display font-bold text-sidebar-foreground text-base leading-tight">
-              Dance Studio
+            <h1 className="font-display font-bold text-primary text-base leading-tight">
+              No. 1 Dance Studio
             </h1>
-            <p className="text-sidebar-foreground/50 text-xs">
+            <p className="text-primary/60 text-xs font-medium tracking-wide">
               Management System
             </p>
           </div>
@@ -53,7 +144,7 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
 
       {/* Nav Items */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map(({ id, label, icon: Icon }) => {
+        {visibleItems.map(({ id, label, icon: Icon }) => {
           const isActive = currentPage === id;
           return (
             <button
@@ -66,8 +157,8 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-left",
                 isActive
-                  ? "bg-primary/15 text-primary shadow-glow border border-primary/20"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
+                  ? "bg-primary/20 text-primary shadow-glow border border-primary/40"
+                  : "text-sidebar-foreground/70 hover:text-primary/80 hover:bg-primary/10 hover:border hover:border-primary/20",
               )}
             >
               <Icon
@@ -85,20 +176,53 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-4 border-t border-sidebar-border">
-        <p className="text-sidebar-foreground/30 text-xs text-center">
-          © {new Date().getFullYear()}.{" "}
-          <a
-            href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-primary transition-colors"
+      {/* User info + Logout */}
+      {currentUser && (
+        <div className="px-3 py-3 border-t border-sidebar-border space-y-2">
+          {/* User info */}
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-sidebar-accent/40">
+            <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+              <Shield className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sidebar-foreground text-xs font-semibold truncate">
+                {currentUser.username}
+              </p>
+              <span
+                className={`inline-block text-[10px] px-1.5 py-0.5 rounded border font-medium ${getRoleColor(currentUser.role)}`}
+              >
+                {getRoleLabel(currentUser.role)}
+              </span>
+            </div>
+          </div>
+
+          {/* Logout button */}
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              setMobileOpen(false);
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
           >
-            Built with caffeine.ai
-          </a>
-        </p>
-      </div>
+            <LogOut className="w-3.5 h-3.5" />
+            Sign Out
+          </button>
+
+          {/* Footer */}
+          <p className="text-sidebar-foreground/25 text-[10px] text-center pt-1">
+            © {new Date().getFullYear()}.{" "}
+            <a
+              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-primary transition-colors"
+            >
+              Built with caffeine.ai
+            </a>
+          </p>
+        </div>
+      )}
     </>
   );
 

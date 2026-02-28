@@ -1,10 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AppUser,
   Batch,
   DueCard,
+  FeeAssignment,
+  FeeAssignmentPayment,
+  FeeAssignmentType,
+  FeePayment,
   SoloProgramme,
   SoloRegistration,
   Student,
+  YearChangeoverRecord,
 } from "../backend.d.ts";
 import { useActor } from "./useActor";
 
@@ -23,7 +29,8 @@ export function useStudentIds() {
       );
       const valid: bigint[] = [];
       results.forEach((r, i) => {
-        if (r.status === "fulfilled") valid.push(BigInt(i + 1));
+        if (r.status === "fulfilled" && r.value !== null)
+          valid.push(BigInt(i + 1));
       });
       return valid;
     },
@@ -44,7 +51,8 @@ export function useBatchIds() {
       );
       const valid: bigint[] = [];
       results.forEach((r, i) => {
-        if (r.status === "fulfilled") valid.push(BigInt(i + 1));
+        if (r.status === "fulfilled" && r.value !== null)
+          valid.push(BigInt(i + 1));
       });
       return valid;
     },
@@ -67,9 +75,10 @@ export function useAllStudents() {
       );
       return results
         .filter(
-          (r): r is PromiseFulfilledResult<Student> => r.status === "fulfilled",
+          (r): r is PromiseFulfilledResult<Student | null> =>
+            r.status === "fulfilled" && r.value !== null,
         )
-        .map((r) => r.value);
+        .map((r) => r.value as Student);
     },
     enabled: !!actor && !isFetching && ids.length >= 0,
     staleTime: 10000,
@@ -78,7 +87,7 @@ export function useAllStudents() {
 
 export function useStudent(studentId: bigint | null) {
   const { actor, isFetching } = useActor();
-  return useQuery<Student>({
+  return useQuery<Student | null>({
     queryKey: ["student", studentId?.toString()],
     queryFn: async () => {
       if (!actor || !studentId) throw new Error("No actor or student ID");
@@ -115,9 +124,10 @@ export function useAllBatches() {
       );
       return results
         .filter(
-          (r): r is PromiseFulfilledResult<Batch> => r.status === "fulfilled",
+          (r): r is PromiseFulfilledResult<Batch | null> =>
+            r.status === "fulfilled" && r.value !== null,
         )
-        .map((r) => r.value);
+        .map((r) => r.value as Batch);
     },
     enabled: !!actor && !isFetching && ids.length >= 0,
     staleTime: 10000,
@@ -126,7 +136,7 @@ export function useAllBatches() {
 
 export function useBatch(batchId: bigint | null) {
   const { actor, isFetching } = useActor();
-  return useQuery<Batch>({
+  return useQuery<Batch | null>({
     queryKey: ["batch", batchId?.toString()],
     queryFn: async () => {
       if (!actor || !batchId) throw new Error("No actor or batch ID");
@@ -153,7 +163,7 @@ export function useBatchesByDay(day: number) {
 
 export function useDueCard(studentId: bigint | null, year: bigint) {
   const { actor, isFetching } = useActor();
-  return useQuery<DueCard>({
+  return useQuery<DueCard | null>({
     queryKey: ["dueCard", studentId?.toString(), year.toString()],
     queryFn: async () => {
       if (!actor || !studentId) throw new Error("No actor or student ID");
@@ -187,6 +197,19 @@ export function useAllSoloProgrammes() {
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllSoloProgrammes();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 10000,
+  });
+}
+
+export function useSoloProgrammesByDay(day: number) {
+  const { actor, isFetching } = useActor();
+  return useQuery<SoloProgramme[]>({
+    queryKey: ["soloProgrammesByDay", day],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getSoloProgrammesByDay(BigInt(day));
     },
     enabled: !!actor && !isFetching,
     staleTime: 10000,
@@ -233,6 +256,7 @@ export function useCreateStudent() {
       guardianName: string;
       guardianRelationship: string;
       guardianPhone: string;
+      admissionFees: bigint;
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.createStudent(
@@ -244,6 +268,7 @@ export function useCreateStudent() {
         data.guardianName,
         data.guardianRelationship,
         data.guardianPhone,
+        data.admissionFees,
       );
     },
     onSuccess: () => {
@@ -260,7 +285,6 @@ export function useUpdateStudent() {
     mutationFn: async (data: {
       studentId: bigint;
       name: string;
-      dateOfAdmission: string;
       age: bigint;
       gender: string;
       contactNumber: string;
@@ -272,7 +296,6 @@ export function useUpdateStudent() {
       return actor.updateStudent(
         data.studentId,
         data.name,
-        data.dateOfAdmission,
         data.age,
         data.gender,
         data.contactNumber,
@@ -294,9 +317,9 @@ export function useMarkStudentInactive() {
   const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (studentId: bigint) => {
+    mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.markStudentInactive(studentId);
+      return actor.markStudentInactive(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["students"] });
@@ -382,7 +405,7 @@ export function useUpdateBatch() {
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.updateBatch(
-        data.batchId,
+        data.batchId, // maps to `id` param in backend
         data.name,
         data.daysOfWeek,
         data.startTime,
@@ -422,7 +445,11 @@ export function useAssignBatch() {
       startDate: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.assignBatch(data.studentId, data.batchId, data.startDate);
+      return actor.assignStudentToBatch(
+        data.studentId,
+        data.batchId,
+        data.startDate,
+      );
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({
@@ -430,6 +457,7 @@ export function useAssignBatch() {
       });
       qc.invalidateQueries({ queryKey: ["students"] });
       qc.invalidateQueries({ queryKey: ["studentsInBatch"] });
+      qc.invalidateQueries({ queryKey: ["dueCard"] });
     },
   });
 }
@@ -441,14 +469,9 @@ export function useGenerateDueCard() {
     mutationFn: async (data: {
       studentId: bigint;
       year: bigint;
-      openingBalance: bigint;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.generateDueCard(
-        data.studentId,
-        data.year,
-        data.openingBalance,
-      );
+      return actor.generateDueCard(data.studentId, data.year);
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({
@@ -467,6 +490,8 @@ export function useCreateSoloProgramme() {
       description: string;
       startDate: string;
       endDate: string;
+      scheduleTime: string;
+      scheduleDays: bigint[];
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.createSoloProgramme(
@@ -474,10 +499,13 @@ export function useCreateSoloProgramme() {
         data.description,
         data.startDate,
         data.endDate,
+        data.scheduleTime,
+        data.scheduleDays,
       );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allSoloProgrammes"] });
+      qc.invalidateQueries({ queryKey: ["soloProgrammesByDay"] });
     },
   });
 }
@@ -504,6 +532,43 @@ export function useRegisterStudentForSolo() {
   });
 }
 
+export function useGetAllPayments() {
+  const { actor, isFetching } = useActor();
+  return useQuery<FeePayment[]>({
+    queryKey: ["allPayments"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllPayments();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 5000,
+  });
+}
+
+export function useRegenerateDueCardFromMonth() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      studentId: bigint;
+      year: bigint;
+      fromMonth: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.regenerateDueCardFromMonth(
+        data.studentId,
+        data.year,
+        data.fromMonth,
+      );
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["dueCard", vars.studentId.toString()],
+      });
+    },
+  });
+}
+
 export function useRecordFeePayment() {
   const { actor } = useActor();
   const qc = useQueryClient();
@@ -516,7 +581,8 @@ export function useRecordFeePayment() {
       remarks: string;
       month: bigint | null;
       year: bigint | null;
-    }) => {
+      paymentMode: string;
+    }): Promise<bigint> => {
       if (!actor) throw new Error("No actor");
       return actor.recordFeePayment(
         data.studentId,
@@ -526,12 +592,272 @@ export function useRecordFeePayment() {
         data.remarks,
         data.month,
         data.year,
+        data.paymentMode,
+      );
+    },
+    onSuccess: (_receiptNumber, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["dueCard", vars.studentId.toString()],
+      });
+      qc.invalidateQueries({
+        queryKey: ["paymentsForStudent", vars.studentId.toString()],
+      });
+      qc.invalidateQueries({ queryKey: ["allPayments"] });
+      qc.invalidateQueries({ queryKey: ["allSoloRegistrations"] });
+      qc.invalidateQueries({
+        queryKey: ["soloRegsForStudent", vars.studentId.toString()],
+      });
+    },
+  });
+}
+
+export function useGetPaymentsForStudent(studentId: bigint | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<FeePayment[]>({
+    queryKey: ["paymentsForStudent", studentId?.toString()],
+    queryFn: async () => {
+      if (!actor || !studentId) return [];
+      return actor.getPaymentsForStudent(studentId);
+    },
+    enabled: !!actor && !isFetching && !!studentId,
+    staleTime: 5000,
+  });
+}
+
+export function useGetAllFeeAssignmentPaymentsForStudent(
+  studentId: bigint | null,
+) {
+  const { actor, isFetching } = useActor();
+  return useQuery<FeeAssignmentPayment[]>({
+    queryKey: ["feeAssignmentPaymentsForStudent", studentId?.toString()],
+    queryFn: async () => {
+      if (!actor || !studentId) return [];
+      return actor.getAllFeeAssignmentPaymentsForStudent(studentId);
+    },
+    enabled: !!actor && !isFetching && !!studentId,
+    staleTime: 5000,
+  });
+}
+
+// ─── Fee Assignments ──────────────────────────────────────────────────────────
+
+export function useAllFeeAssignments() {
+  const { actor, isFetching } = useActor();
+  return useQuery<FeeAssignment[]>({
+    queryKey: ["feeAssignments"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllFeeAssignments();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 10000,
+  });
+}
+
+export function useFeeAssignmentPayments(assignmentId: bigint | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<FeeAssignmentPayment[]>({
+    queryKey: ["feeAssignmentPayments", assignmentId?.toString()],
+    queryFn: async () => {
+      if (!actor || !assignmentId) return [];
+      return actor.getFeeAssignmentPayments(assignmentId);
+    },
+    enabled: !!actor && !isFetching && !!assignmentId,
+    staleTime: 10000,
+  });
+}
+
+export function useCreateFeeAssignment() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      name: string;
+      feeType: FeeAssignmentType;
+      amount: bigint;
+      year: bigint;
+      studentIds: bigint[];
+      description: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.createFeeAssignment(
+        data.name,
+        data.feeType,
+        data.amount,
+        data.year,
+        data.studentIds,
+        data.description,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["feeAssignments"] });
+    },
+  });
+}
+
+export function useMarkFeeAssignmentPaymentPaid() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      assignmentId: bigint;
+      studentId: bigint;
+      paidDate: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.markFeeAssignmentPaymentPaid(
+        data.assignmentId,
+        data.studentId,
+        data.paidDate,
       );
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({
-        queryKey: ["dueCard", vars.studentId.toString()],
+        queryKey: ["feeAssignmentPayments", vars.assignmentId.toString()],
       });
+      qc.invalidateQueries({ queryKey: ["feeAssignments"] });
+    },
+  });
+}
+
+// ─── Year Changeover ──────────────────────────────────────────────────────────
+
+export function useYearChangeoverRecord(
+  studentId: bigint | null,
+  year: bigint | null,
+) {
+  const { actor, isFetching } = useActor();
+  return useQuery<YearChangeoverRecord | null>({
+    queryKey: ["yearChangeoverRecord", studentId?.toString(), year?.toString()],
+    queryFn: async () => {
+      if (!actor || !studentId || !year) return null;
+      return actor.getYearChangeoverRecord(studentId, year);
+    },
+    enabled: !!actor && !isFetching && !!studentId && !!year,
+    staleTime: 30000,
+  });
+}
+
+export function usePerformYearChangeover() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (toYear: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.performYearChangeover(toYear);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["currentYear"] });
+      qc.invalidateQueries({ queryKey: ["dueCard"] });
+      qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["yearChangeoverRecord"] });
+    },
+  });
+}
+
+// ─── App Users ────────────────────────────────────────────────────────────────
+
+export function useAllAppUsers() {
+  const { actor, isFetching } = useActor();
+  return useQuery<AppUser[]>({
+    queryKey: ["appUsers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllAppUsers();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 10000,
+  });
+}
+
+export function useCreateAppUser() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      username: string;
+      mobileNumber: string;
+      password: string;
+      role: string;
+    }): Promise<bigint> => {
+      if (!actor) throw new Error("No actor");
+      return actor.createAppUser(
+        data.username,
+        data.mobileNumber,
+        data.password,
+        data.role,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appUsers"] });
+    },
+  });
+}
+
+export function useResetUserPassword() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { userId: bigint; newPassword: string }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.resetUserPassword(data.userId, data.newPassword);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appUsers"] });
+    },
+  });
+}
+
+export function useDeactivateAppUser() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.deactivateAppUser(userId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appUsers"] });
+    },
+  });
+}
+
+export function useLoginUser() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async (data: {
+      mobileNumber: string;
+      password: string;
+    }): Promise<AppUser | null> => {
+      if (!actor) throw new Error("No actor");
+      return actor.loginUser(data.mobileNumber, data.password);
+    },
+  });
+}
+
+export function useGuestLogin() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async (data: {
+      name: string;
+      mobileNumber: string;
+    }): Promise<AppUser> => {
+      if (!actor) throw new Error("No actor");
+      return actor.guestLogin(data.name, data.mobileNumber);
+    },
+  });
+}
+
+export function useUpdateCurrentYear() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (year: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.updateCurrentYear(year);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["currentYear"] });
     },
   });
 }

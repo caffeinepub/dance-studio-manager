@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Calendar,
   CheckCircle2,
+  Clock,
   Loader2,
   Plus,
   Star,
@@ -30,6 +32,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import type { SoloProgramme, SoloRegistration, Student } from "../backend.d.ts";
+import { useAuth } from "../contexts/AuthContext";
 import {
   useAllSoloProgrammes,
   useAllSoloRegistrations,
@@ -39,14 +42,35 @@ import {
   useRegisterStudentForSolo,
 } from "../hooks/useQueries";
 
+const DAYS_OF_WEEK = [
+  { label: "Sun", value: 0 },
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+];
+
 function CreateProgrammeDialog({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({
     name: "",
     description: "",
     startDate: "",
     endDate: "",
+    scheduleTime: "",
+    scheduleDays: [] as number[],
   });
   const createSolo = useCreateSoloProgramme();
+
+  const toggleDay = (day: number) => {
+    setForm((p) => ({
+      ...p,
+      scheduleDays: p.scheduleDays.includes(day)
+        ? p.scheduleDays.filter((d) => d !== day)
+        : [...p.scheduleDays, day].sort((a, b) => a - b),
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +84,8 @@ function CreateProgrammeDialog({ onClose }: { onClose: () => void }) {
         description: form.description,
         startDate: form.startDate,
         endDate: form.endDate,
+        scheduleTime: form.scheduleTime,
+        scheduleDays: form.scheduleDays.map(BigInt),
       });
       toast.success("Solo Programme created");
       onClose();
@@ -97,7 +123,7 @@ function CreateProgrammeDialog({ onClose }: { onClose: () => void }) {
               }
               placeholder="Brief description..."
               className="bg-input border-border resize-none"
-              rows={3}
+              rows={2}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -122,6 +148,50 @@ function CreateProgrammeDialog({ onClose }: { onClose: () => void }) {
                 }
                 className="bg-input border-border"
               />
+            </div>
+          </div>
+          {/* Schedule Time */}
+          <div className="space-y-1.5">
+            <Label className="text-foreground text-sm flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              Class Time (optional)
+            </Label>
+            <Input
+              type="time"
+              value={form.scheduleTime}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, scheduleTime: e.target.value }))
+              }
+              className="bg-input border-border"
+            />
+          </div>
+          {/* Scheduled Days */}
+          <div className="space-y-2">
+            <Label className="text-foreground text-sm">
+              Scheduled Days (optional)
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {DAYS_OF_WEEK.map(({ label, value }) => {
+                const checked = form.scheduleDays.includes(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => toggleDay(value)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${
+                      checked
+                        ? "bg-primary/15 border-primary/40 text-primary"
+                        : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                    }`}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      className="w-3 h-3 pointer-events-none"
+                    />
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <DialogFooter>
@@ -252,6 +322,7 @@ function ProgrammeStudentList({
   registrations: SoloRegistration[];
   students: Student[];
 }) {
+  const { isAdmin } = useAuth();
   const markComplete = useMarkSoloComplete();
 
   const progRegistrations = registrations.filter(
@@ -330,7 +401,7 @@ function ProgrammeStudentList({
                 >
                   Completed
                 </Badge>
-              ) : (
+              ) : isAdmin ? (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -354,7 +425,7 @@ function ProgrammeStudentList({
                   )}
                   Complete
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
         );
@@ -471,6 +542,36 @@ export default function SoloProgrammesPage() {
                     {prog.startDate} → {prog.endDate}
                   </span>
                 </div>
+
+                {/* Schedule time and days */}
+                {(prog.scheduleTime || prog.scheduleDays.length > 0) && (
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    {prog.scheduleTime && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3 text-primary/60" />
+                        <span className="font-medium text-foreground">
+                          {prog.scheduleTime}
+                        </span>
+                      </div>
+                    )}
+                    {prog.scheduleDays.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {prog.scheduleDays.map((d) => (
+                          <span
+                            key={d.toString()}
+                            className="text-xs bg-primary/10 text-primary/80 px-1.5 py-0.5 rounded"
+                          >
+                            {
+                              ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+                                Number(d)
+                              ]
+                            }
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
                   <div className="flex items-center gap-1.5 text-muted-foreground text-sm">

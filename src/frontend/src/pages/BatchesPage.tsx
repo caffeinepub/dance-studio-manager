@@ -26,6 +26,7 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Batch } from "../backend.d.ts";
+import { useAuth } from "../contexts/AuthContext";
 import {
   useAllBatches,
   useCreateBatch,
@@ -248,6 +249,7 @@ export default function BatchesPage() {
   const [editBatch, setEditBatch] = useState<Batch | null>(null);
   const [deleteBatch, setDeleteBatch] = useState<Batch | null>(null);
 
+  const { isAdmin } = useAuth();
   const { data: batches = [], isLoading } = useAllBatches();
   const deleteBatchMutation = useDeleteBatch();
 
@@ -276,13 +278,15 @@ export default function BatchesPage() {
             {batches.length} batch{batches.length !== 1 ? "es" : ""} configured
           </p>
         </div>
-        <Button
-          onClick={() => setFormOpen(true)}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          New Batch
-        </Button>
+        {isAdmin && (
+          <Button
+            onClick={() => setFormOpen(true)}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            New Batch
+          </Button>
+        )}
       </div>
 
       {/* Batch Grid */}
@@ -350,24 +354,26 @@ export default function BatchesPage() {
                 >
                   ₹{batch.monthlyFees.toString()}/mo
                 </Badge>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditBatch(batch)}
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeleteBatch(batch)}
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                {isAdmin && (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditBatch(batch)}
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteBatch(batch)}
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

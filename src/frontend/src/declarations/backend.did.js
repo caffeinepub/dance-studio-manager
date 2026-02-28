@@ -13,11 +13,52 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const FeeAssignmentType = IDL.Variant({
+  'other' : IDL.Null,
+  'annualDay' : IDL.Null,
+  'puja' : IDL.Null,
+});
+export const AppUser = IDL.Record({
+  'id' : IDL.Nat,
+  'username' : IDL.Text,
+  'password' : IDL.Text,
+  'role' : IDL.Text,
+  'mobileNumber' : IDL.Text,
+  'isActive' : IDL.Bool,
+});
+export const FeeAssignmentPayment = IDL.Record({
+  'studentId' : IDL.Nat,
+  'isPaid' : IDL.Bool,
+  'paidDate' : IDL.Opt(IDL.Text),
+  'assignmentId' : IDL.Nat,
+  'amount' : IDL.Nat,
+});
+export const FeeAssignment = IDL.Record({
+  'id' : IDL.Nat,
+  'name' : IDL.Text,
+  'year' : IDL.Nat,
+  'feeType' : FeeAssignmentType,
+  'description' : IDL.Text,
+  'amount' : IDL.Nat,
+});
+export const FeePayment = IDL.Record({
+  'month' : IDL.Opt(IDL.Nat),
+  'studentId' : IDL.Nat,
+  'date' : IDL.Text,
+  'year' : IDL.Opt(IDL.Nat),
+  'feeType' : IDL.Text,
+  'paymentMode' : IDL.Text,
+  'amount' : IDL.Nat,
+  'remarks' : IDL.Text,
+  'receiptNumber' : IDL.Nat,
+});
 export const SoloProgramme = IDL.Record({
   'id' : IDL.Nat,
   'endDate' : IDL.Text,
   'name' : IDL.Text,
   'description' : IDL.Text,
+  'scheduleDays' : IDL.Vec(IDL.Nat),
+  'scheduleTime' : IDL.Text,
   'startDate' : IDL.Text,
 });
 export const SoloRegistration = IDL.Record({
@@ -26,6 +67,20 @@ export const SoloRegistration = IDL.Record({
   'isCompleted' : IDL.Bool,
   'isPaid' : IDL.Bool,
   'programmeId' : IDL.Nat,
+});
+export const Student = IDL.Record({
+  'id' : IDL.Nat,
+  'age' : IDL.Nat,
+  'admissionFees' : IDL.Nat,
+  'name' : IDL.Text,
+  'guardianRelationship' : IDL.Text,
+  'isActive' : IDL.Bool,
+  'guardianPhone' : IDL.Text,
+  'gender' : IDL.Text,
+  'contactNumber' : IDL.Text,
+  'currentBatchId' : IDL.Opt(IDL.Nat),
+  'guardianName' : IDL.Text,
+  'dateOfAdmission' : IDL.Text,
 });
 export const Batch = IDL.Record({
   'id' : IDL.Nat,
@@ -49,31 +104,46 @@ export const DueCard = IDL.Record({
   'year' : IDL.Nat,
   'openingBalance' : IDL.Int,
 });
-export const Student = IDL.Record({
-  'id' : IDL.Nat,
-  'age' : IDL.Nat,
-  'name' : IDL.Text,
-  'guardianRelationship' : IDL.Text,
-  'isActive' : IDL.Bool,
-  'guardianPhone' : IDL.Text,
-  'gender' : IDL.Text,
-  'contactNumber' : IDL.Text,
-  'currentBatchId' : IDL.Opt(IDL.Nat),
-  'guardianName' : IDL.Text,
-  'dateOfAdmission' : IDL.Text,
+export const OpeningBalanceItem = IDL.Record({
+  'description' : IDL.Text,
+  'amount' : IDL.Int,
+});
+export const YearChangeoverRecord = IDL.Record({
+  'studentId' : IDL.Nat,
+  'totalOpeningBalance' : IDL.Int,
+  'toYear' : IDL.Nat,
+  'breakdownItems' : IDL.Vec(OpeningBalanceItem),
+  'fromYear' : IDL.Nat,
 });
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'assignBatch' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'assignStudentToBatch' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
+  'createAppUser' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Nat],
+      [],
+    ),
   'createBatch' : IDL.Func(
       [IDL.Text, IDL.Vec(IDL.Nat), IDL.Text, IDL.Text, IDL.Nat],
       [IDL.Nat],
       [],
     ),
+  'createFeeAssignment' : IDL.Func(
+      [
+        IDL.Text,
+        FeeAssignmentType,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Vec(IDL.Nat),
+        IDL.Text,
+      ],
+      [IDL.Nat],
+      [],
+    ),
   'createSoloProgramme' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Vec(IDL.Nat)],
       [IDL.Nat],
       [],
     ),
@@ -87,41 +157,81 @@ export const idlService = IDL.Service({
         IDL.Text,
         IDL.Text,
         IDL.Text,
+        IDL.Nat,
       ],
       [IDL.Nat],
       [],
     ),
+  'deactivateAppUser' : IDL.Func([IDL.Nat], [], []),
   'deleteBatch' : IDL.Func([IDL.Nat], [], []),
-  'generateDueCard' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Int], [], []),
+  'generateDueCard' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+  'getAllAppUsers' : IDL.Func([], [IDL.Vec(AppUser)], ['query']),
+  'getAllFeeAssignmentPaymentsForStudent' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(FeeAssignmentPayment)],
+      ['query'],
+    ),
+  'getAllFeeAssignments' : IDL.Func([], [IDL.Vec(FeeAssignment)], ['query']),
+  'getAllPayments' : IDL.Func([], [IDL.Vec(FeePayment)], ['query']),
   'getAllSoloProgrammes' : IDL.Func([], [IDL.Vec(SoloProgramme)], ['query']),
   'getAllSoloRegistrations' : IDL.Func(
       [],
       [IDL.Vec(SoloRegistration)],
       ['query'],
     ),
-  'getBatch' : IDL.Func([IDL.Nat], [Batch], ['query']),
+  'getAllStudents' : IDL.Func([], [IDL.Vec(Student)], ['query']),
+  'getBatch' : IDL.Func([IDL.Nat], [IDL.Opt(Batch)], ['query']),
   'getBatchesByDay' : IDL.Func([IDL.Nat], [IDL.Vec(Batch)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCurrentYear' : IDL.Func([], [IDL.Nat], ['query']),
-  'getDueCard' : IDL.Func([IDL.Nat, IDL.Nat], [DueCard], ['query']),
-  'getSoloProgramme' : IDL.Func([IDL.Nat], [SoloProgramme], ['query']),
+  'getDueCard' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Opt(DueCard)], ['query']),
+  'getFeeAssignmentPayments' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(FeeAssignmentPayment)],
+      ['query'],
+    ),
+  'getNextReceiptNumber' : IDL.Func([], [IDL.Nat], ['query']),
+  'getPaymentsForStudent' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(FeePayment)],
+      ['query'],
+    ),
+  'getSoloProgramme' : IDL.Func([IDL.Nat], [IDL.Opt(SoloProgramme)], ['query']),
+  'getSoloProgrammesByDay' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(SoloProgramme)],
+      ['query'],
+    ),
   'getSoloRegistrationsForStudent' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(SoloRegistration)],
       ['query'],
     ),
-  'getStudent' : IDL.Func([IDL.Nat], [Student], ['query']),
+  'getStudent' : IDL.Func([IDL.Nat], [IDL.Opt(Student)], ['query']),
   'getStudentsInBatch' : IDL.Func([IDL.Nat], [IDL.Vec(Student)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'getYearChangeoverRecord' : IDL.Func(
+      [IDL.Nat, IDL.Nat],
+      [IDL.Opt(YearChangeoverRecord)],
+      ['query'],
+    ),
+  'guestLogin' : IDL.Func([IDL.Text, IDL.Text], [AppUser], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'loginUser' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AppUser)], []),
+  'markFeeAssignmentPaymentPaid' : IDL.Func(
+      [IDL.Nat, IDL.Nat, IDL.Text],
+      [],
+      [],
+    ),
   'markSoloComplete' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'markSoloPaid' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'markStudentInactive' : IDL.Func([IDL.Nat], [], []),
+  'performYearChangeover' : IDL.Func([IDL.Nat], [], []),
   'recordFeePayment' : IDL.Func(
       [
         IDL.Nat,
@@ -131,12 +241,16 @@ export const idlService = IDL.Service({
         IDL.Text,
         IDL.Opt(IDL.Nat),
         IDL.Opt(IDL.Nat),
+        IDL.Text,
       ],
-      [],
+      [IDL.Nat],
       [],
     ),
+  'regenerateDueCardFromMonth' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [], []),
   'registerStudentForSolo' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [], []),
+  'resetUserPassword' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'seedDefaultUsers' : IDL.Func([], [], []),
   'updateBatch' : IDL.Func(
       [IDL.Nat, IDL.Text, IDL.Vec(IDL.Nat), IDL.Text, IDL.Text, IDL.Nat],
       [],
@@ -146,7 +260,6 @@ export const idlService = IDL.Service({
   'updateStudent' : IDL.Func(
       [
         IDL.Nat,
-        IDL.Text,
         IDL.Text,
         IDL.Nat,
         IDL.Text,
@@ -168,11 +281,52 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const FeeAssignmentType = IDL.Variant({
+    'other' : IDL.Null,
+    'annualDay' : IDL.Null,
+    'puja' : IDL.Null,
+  });
+  const AppUser = IDL.Record({
+    'id' : IDL.Nat,
+    'username' : IDL.Text,
+    'password' : IDL.Text,
+    'role' : IDL.Text,
+    'mobileNumber' : IDL.Text,
+    'isActive' : IDL.Bool,
+  });
+  const FeeAssignmentPayment = IDL.Record({
+    'studentId' : IDL.Nat,
+    'isPaid' : IDL.Bool,
+    'paidDate' : IDL.Opt(IDL.Text),
+    'assignmentId' : IDL.Nat,
+    'amount' : IDL.Nat,
+  });
+  const FeeAssignment = IDL.Record({
+    'id' : IDL.Nat,
+    'name' : IDL.Text,
+    'year' : IDL.Nat,
+    'feeType' : FeeAssignmentType,
+    'description' : IDL.Text,
+    'amount' : IDL.Nat,
+  });
+  const FeePayment = IDL.Record({
+    'month' : IDL.Opt(IDL.Nat),
+    'studentId' : IDL.Nat,
+    'date' : IDL.Text,
+    'year' : IDL.Opt(IDL.Nat),
+    'feeType' : IDL.Text,
+    'paymentMode' : IDL.Text,
+    'amount' : IDL.Nat,
+    'remarks' : IDL.Text,
+    'receiptNumber' : IDL.Nat,
+  });
   const SoloProgramme = IDL.Record({
     'id' : IDL.Nat,
     'endDate' : IDL.Text,
     'name' : IDL.Text,
     'description' : IDL.Text,
+    'scheduleDays' : IDL.Vec(IDL.Nat),
+    'scheduleTime' : IDL.Text,
     'startDate' : IDL.Text,
   });
   const SoloRegistration = IDL.Record({
@@ -181,6 +335,20 @@ export const idlFactory = ({ IDL }) => {
     'isCompleted' : IDL.Bool,
     'isPaid' : IDL.Bool,
     'programmeId' : IDL.Nat,
+  });
+  const Student = IDL.Record({
+    'id' : IDL.Nat,
+    'age' : IDL.Nat,
+    'admissionFees' : IDL.Nat,
+    'name' : IDL.Text,
+    'guardianRelationship' : IDL.Text,
+    'isActive' : IDL.Bool,
+    'guardianPhone' : IDL.Text,
+    'gender' : IDL.Text,
+    'contactNumber' : IDL.Text,
+    'currentBatchId' : IDL.Opt(IDL.Nat),
+    'guardianName' : IDL.Text,
+    'dateOfAdmission' : IDL.Text,
   });
   const Batch = IDL.Record({
     'id' : IDL.Nat,
@@ -204,31 +372,46 @@ export const idlFactory = ({ IDL }) => {
     'year' : IDL.Nat,
     'openingBalance' : IDL.Int,
   });
-  const Student = IDL.Record({
-    'id' : IDL.Nat,
-    'age' : IDL.Nat,
-    'name' : IDL.Text,
-    'guardianRelationship' : IDL.Text,
-    'isActive' : IDL.Bool,
-    'guardianPhone' : IDL.Text,
-    'gender' : IDL.Text,
-    'contactNumber' : IDL.Text,
-    'currentBatchId' : IDL.Opt(IDL.Nat),
-    'guardianName' : IDL.Text,
-    'dateOfAdmission' : IDL.Text,
+  const OpeningBalanceItem = IDL.Record({
+    'description' : IDL.Text,
+    'amount' : IDL.Int,
+  });
+  const YearChangeoverRecord = IDL.Record({
+    'studentId' : IDL.Nat,
+    'totalOpeningBalance' : IDL.Int,
+    'toYear' : IDL.Nat,
+    'breakdownItems' : IDL.Vec(OpeningBalanceItem),
+    'fromYear' : IDL.Nat,
   });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'assignBatch' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'assignStudentToBatch' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
+    'createAppUser' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Nat],
+        [],
+      ),
     'createBatch' : IDL.Func(
         [IDL.Text, IDL.Vec(IDL.Nat), IDL.Text, IDL.Text, IDL.Nat],
         [IDL.Nat],
         [],
       ),
+    'createFeeAssignment' : IDL.Func(
+        [
+          IDL.Text,
+          FeeAssignmentType,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Vec(IDL.Nat),
+          IDL.Text,
+        ],
+        [IDL.Nat],
+        [],
+      ),
     'createSoloProgramme' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Vec(IDL.Nat)],
         [IDL.Nat],
         [],
       ),
@@ -242,41 +425,85 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           IDL.Text,
           IDL.Text,
+          IDL.Nat,
         ],
         [IDL.Nat],
         [],
       ),
+    'deactivateAppUser' : IDL.Func([IDL.Nat], [], []),
     'deleteBatch' : IDL.Func([IDL.Nat], [], []),
-    'generateDueCard' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Int], [], []),
+    'generateDueCard' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+    'getAllAppUsers' : IDL.Func([], [IDL.Vec(AppUser)], ['query']),
+    'getAllFeeAssignmentPaymentsForStudent' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(FeeAssignmentPayment)],
+        ['query'],
+      ),
+    'getAllFeeAssignments' : IDL.Func([], [IDL.Vec(FeeAssignment)], ['query']),
+    'getAllPayments' : IDL.Func([], [IDL.Vec(FeePayment)], ['query']),
     'getAllSoloProgrammes' : IDL.Func([], [IDL.Vec(SoloProgramme)], ['query']),
     'getAllSoloRegistrations' : IDL.Func(
         [],
         [IDL.Vec(SoloRegistration)],
         ['query'],
       ),
-    'getBatch' : IDL.Func([IDL.Nat], [Batch], ['query']),
+    'getAllStudents' : IDL.Func([], [IDL.Vec(Student)], ['query']),
+    'getBatch' : IDL.Func([IDL.Nat], [IDL.Opt(Batch)], ['query']),
     'getBatchesByDay' : IDL.Func([IDL.Nat], [IDL.Vec(Batch)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCurrentYear' : IDL.Func([], [IDL.Nat], ['query']),
-    'getDueCard' : IDL.Func([IDL.Nat, IDL.Nat], [DueCard], ['query']),
-    'getSoloProgramme' : IDL.Func([IDL.Nat], [SoloProgramme], ['query']),
+    'getDueCard' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Opt(DueCard)], ['query']),
+    'getFeeAssignmentPayments' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(FeeAssignmentPayment)],
+        ['query'],
+      ),
+    'getNextReceiptNumber' : IDL.Func([], [IDL.Nat], ['query']),
+    'getPaymentsForStudent' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(FeePayment)],
+        ['query'],
+      ),
+    'getSoloProgramme' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Opt(SoloProgramme)],
+        ['query'],
+      ),
+    'getSoloProgrammesByDay' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(SoloProgramme)],
+        ['query'],
+      ),
     'getSoloRegistrationsForStudent' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(SoloRegistration)],
         ['query'],
       ),
-    'getStudent' : IDL.Func([IDL.Nat], [Student], ['query']),
+    'getStudent' : IDL.Func([IDL.Nat], [IDL.Opt(Student)], ['query']),
     'getStudentsInBatch' : IDL.Func([IDL.Nat], [IDL.Vec(Student)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'getYearChangeoverRecord' : IDL.Func(
+        [IDL.Nat, IDL.Nat],
+        [IDL.Opt(YearChangeoverRecord)],
+        ['query'],
+      ),
+    'guestLogin' : IDL.Func([IDL.Text, IDL.Text], [AppUser], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'loginUser' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AppUser)], []),
+    'markFeeAssignmentPaymentPaid' : IDL.Func(
+        [IDL.Nat, IDL.Nat, IDL.Text],
+        [],
+        [],
+      ),
     'markSoloComplete' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'markSoloPaid' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'markStudentInactive' : IDL.Func([IDL.Nat], [], []),
+    'performYearChangeover' : IDL.Func([IDL.Nat], [], []),
     'recordFeePayment' : IDL.Func(
         [
           IDL.Nat,
@@ -286,12 +513,20 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           IDL.Opt(IDL.Nat),
           IDL.Opt(IDL.Nat),
+          IDL.Text,
         ],
+        [IDL.Nat],
+        [],
+      ),
+    'regenerateDueCardFromMonth' : IDL.Func(
+        [IDL.Nat, IDL.Nat, IDL.Nat],
         [],
         [],
       ),
     'registerStudentForSolo' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [], []),
+    'resetUserPassword' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'seedDefaultUsers' : IDL.Func([], [], []),
     'updateBatch' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Vec(IDL.Nat), IDL.Text, IDL.Text, IDL.Nat],
         [],
@@ -301,7 +536,6 @@ export const idlFactory = ({ IDL }) => {
     'updateStudent' : IDL.Func(
         [
           IDL.Nat,
-          IDL.Text,
           IDL.Text,
           IDL.Nat,
           IDL.Text,

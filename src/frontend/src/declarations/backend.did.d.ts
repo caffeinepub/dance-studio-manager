@@ -10,6 +10,14 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AppUser {
+  'id' : bigint,
+  'username' : string,
+  'password' : string,
+  'role' : string,
+  'mobileNumber' : string,
+  'isActive' : boolean,
+}
 export interface Batch {
   'id' : bigint,
   'startTime' : string,
@@ -25,17 +33,52 @@ export interface DueCard {
   'year' : bigint,
   'openingBalance' : bigint,
 }
+export interface FeeAssignment {
+  'id' : bigint,
+  'name' : string,
+  'year' : bigint,
+  'feeType' : FeeAssignmentType,
+  'description' : string,
+  'amount' : bigint,
+}
+export interface FeeAssignmentPayment {
+  'studentId' : bigint,
+  'isPaid' : boolean,
+  'paidDate' : [] | [string],
+  'assignmentId' : bigint,
+  'amount' : bigint,
+}
+export type FeeAssignmentType = { 'other' : null } |
+  { 'annualDay' : null } |
+  { 'puja' : null };
+export interface FeePayment {
+  'month' : [] | [bigint],
+  'studentId' : bigint,
+  'date' : string,
+  'year' : [] | [bigint],
+  'feeType' : string,
+  'paymentMode' : string,
+  'amount' : bigint,
+  'remarks' : string,
+  'receiptNumber' : bigint,
+}
 export interface MonthlyEntry {
   'month' : bigint,
   'balance' : bigint,
   'paidAmount' : bigint,
   'dueAmount' : bigint,
 }
+export interface OpeningBalanceItem {
+  'description' : string,
+  'amount' : bigint,
+}
 export interface SoloProgramme {
   'id' : bigint,
   'endDate' : string,
   'name' : string,
   'description' : string,
+  'scheduleDays' : Array<bigint>,
+  'scheduleTime' : string,
   'startDate' : string,
 }
 export interface SoloRegistration {
@@ -48,6 +91,7 @@ export interface SoloRegistration {
 export interface Student {
   'id' : bigint,
   'age' : bigint,
+  'admissionFees' : bigint,
   'name' : string,
   'guardianRelationship' : string,
   'isActive' : boolean,
@@ -62,54 +106,111 @@ export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface YearChangeoverRecord {
+  'studentId' : bigint,
+  'totalOpeningBalance' : bigint,
+  'toYear' : bigint,
+  'breakdownItems' : Array<OpeningBalanceItem>,
+  'fromYear' : bigint,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'assignBatch' : ActorMethod<[bigint, bigint, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'assignStudentToBatch' : ActorMethod<[bigint, bigint, string], undefined>,
+  'createAppUser' : ActorMethod<[string, string, string, string], bigint>,
   'createBatch' : ActorMethod<
     [string, Array<bigint>, string, string, bigint],
     bigint
   >,
-  'createSoloProgramme' : ActorMethod<[string, string, string, string], bigint>,
-  'createStudent' : ActorMethod<
-    [string, string, bigint, string, string, string, string, string],
+  'createFeeAssignment' : ActorMethod<
+    [string, FeeAssignmentType, bigint, bigint, Array<bigint>, string],
     bigint
   >,
+  'createSoloProgramme' : ActorMethod<
+    [string, string, string, string, string, Array<bigint>],
+    bigint
+  >,
+  'createStudent' : ActorMethod<
+    [string, string, bigint, string, string, string, string, string, bigint],
+    bigint
+  >,
+  'deactivateAppUser' : ActorMethod<[bigint], undefined>,
   'deleteBatch' : ActorMethod<[bigint], undefined>,
-  'generateDueCard' : ActorMethod<[bigint, bigint, bigint], undefined>,
+  'generateDueCard' : ActorMethod<[bigint, bigint], undefined>,
+  'getAllAppUsers' : ActorMethod<[], Array<AppUser>>,
+  'getAllFeeAssignmentPaymentsForStudent' : ActorMethod<
+    [bigint],
+    Array<FeeAssignmentPayment>
+  >,
+  'getAllFeeAssignments' : ActorMethod<[], Array<FeeAssignment>>,
+  'getAllPayments' : ActorMethod<[], Array<FeePayment>>,
   'getAllSoloProgrammes' : ActorMethod<[], Array<SoloProgramme>>,
   'getAllSoloRegistrations' : ActorMethod<[], Array<SoloRegistration>>,
-  'getBatch' : ActorMethod<[bigint], Batch>,
+  'getAllStudents' : ActorMethod<[], Array<Student>>,
+  'getBatch' : ActorMethod<[bigint], [] | [Batch]>,
   'getBatchesByDay' : ActorMethod<[bigint], Array<Batch>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCurrentYear' : ActorMethod<[], bigint>,
-  'getDueCard' : ActorMethod<[bigint, bigint], DueCard>,
-  'getSoloProgramme' : ActorMethod<[bigint], SoloProgramme>,
+  'getDueCard' : ActorMethod<[bigint, bigint], [] | [DueCard]>,
+  'getFeeAssignmentPayments' : ActorMethod<
+    [bigint],
+    Array<FeeAssignmentPayment>
+  >,
+  'getNextReceiptNumber' : ActorMethod<[], bigint>,
+  'getPaymentsForStudent' : ActorMethod<[bigint], Array<FeePayment>>,
+  'getSoloProgramme' : ActorMethod<[bigint], [] | [SoloProgramme]>,
+  'getSoloProgrammesByDay' : ActorMethod<[bigint], Array<SoloProgramme>>,
   'getSoloRegistrationsForStudent' : ActorMethod<
     [bigint],
     Array<SoloRegistration>
   >,
-  'getStudent' : ActorMethod<[bigint], Student>,
+  'getStudent' : ActorMethod<[bigint], [] | [Student]>,
   'getStudentsInBatch' : ActorMethod<[bigint], Array<Student>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getYearChangeoverRecord' : ActorMethod<
+    [bigint, bigint],
+    [] | [YearChangeoverRecord]
+  >,
+  'guestLogin' : ActorMethod<[string, string], AppUser>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'loginUser' : ActorMethod<[string, string], [] | [AppUser]>,
+  'markFeeAssignmentPaymentPaid' : ActorMethod<
+    [bigint, bigint, string],
+    undefined
+  >,
   'markSoloComplete' : ActorMethod<[bigint, bigint], undefined>,
   'markSoloPaid' : ActorMethod<[bigint, bigint], undefined>,
   'markStudentInactive' : ActorMethod<[bigint], undefined>,
+  'performYearChangeover' : ActorMethod<[bigint], undefined>,
   'recordFeePayment' : ActorMethod<
-    [bigint, string, string, bigint, string, [] | [bigint], [] | [bigint]],
+    [
+      bigint,
+      string,
+      string,
+      bigint,
+      string,
+      [] | [bigint],
+      [] | [bigint],
+      string,
+    ],
+    bigint
+  >,
+  'regenerateDueCardFromMonth' : ActorMethod<
+    [bigint, bigint, bigint],
     undefined
   >,
   'registerStudentForSolo' : ActorMethod<[bigint, bigint, bigint], undefined>,
+  'resetUserPassword' : ActorMethod<[bigint, string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'seedDefaultUsers' : ActorMethod<[], undefined>,
   'updateBatch' : ActorMethod<
     [bigint, string, Array<bigint>, string, string, bigint],
     undefined
   >,
   'updateCurrentYear' : ActorMethod<[bigint], undefined>,
   'updateStudent' : ActorMethod<
-    [bigint, string, string, bigint, string, string, string, string, string],
+    [bigint, string, bigint, string, string, string, string, string],
     undefined
   >,
 }

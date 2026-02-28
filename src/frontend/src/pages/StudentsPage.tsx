@@ -42,6 +42,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { Batch, Student } from "../backend.d.ts";
 import DueCardModal from "../components/DueCardModal";
+import { useAuth } from "../contexts/AuthContext";
 import {
   useAllBatches,
   useAllStudents,
@@ -56,13 +57,14 @@ const GUARDIAN_REL_OPTIONS = ["Father", "Mother", "Self", "Other"];
 
 interface StudentFormData {
   name: string;
-  dateOfAdmission: string;
+  dateOfAdmission: string; // kept for display / create only
   age: string;
   gender: string;
   contactNumber: string;
   guardianName: string;
   guardianRelationship: string;
   guardianPhone: string;
+  admissionFees: string;
 }
 
 const emptyForm: StudentFormData = {
@@ -74,6 +76,7 @@ const emptyForm: StudentFormData = {
   guardianName: "",
   guardianRelationship: "",
   guardianPhone: "",
+  admissionFees: "",
 };
 
 function StudentFormDialog({
@@ -96,6 +99,7 @@ function StudentFormDialog({
           guardianName: student.guardianName,
           guardianRelationship: student.guardianRelationship,
           guardianPhone: student.guardianPhone,
+          admissionFees: "",
         }
       : emptyForm,
   );
@@ -120,7 +124,6 @@ function StudentFormDialog({
         await updateStudent.mutateAsync({
           studentId: student.id,
           name: form.name.trim(),
-          dateOfAdmission: form.dateOfAdmission,
           age: BigInt(form.age || "0"),
           gender: form.gender,
           contactNumber: form.contactNumber,
@@ -139,6 +142,7 @@ function StudentFormDialog({
           guardianName: form.guardianName.trim(),
           guardianRelationship: form.guardianRelationship,
           guardianPhone: form.guardianPhone,
+          admissionFees: BigInt(form.admissionFees || "0"),
         });
         toast.success("Student registered successfully");
         setForm(emptyForm);
@@ -260,6 +264,32 @@ function StudentFormDialog({
                 className="bg-input border-border"
               />
             </div>
+            {/* Admission Fees — only for new student registration */}
+            {!student && (
+              <div className="col-span-2 border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
+                  Fee Details
+                </p>
+              </div>
+            )}
+            {!student && (
+              <div className="col-span-2 space-y-1.5">
+                <Label className="text-foreground text-sm">
+                  Admission Fees (₹)
+                </Label>
+                <Input
+                  type="number"
+                  value={form.admissionFees}
+                  onChange={(e) => set("admissionFees", e.target.value)}
+                  placeholder="e.g. 500"
+                  min="0"
+                  className="bg-input border-border"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This will appear as a pending due in Fee Collection.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -324,7 +354,7 @@ function AssignBatchDialog({
       <DialogContent className="bg-card border-border max-w-sm">
         <DialogHeader>
           <DialogTitle className="font-display text-foreground">
-            Assign Batch — {student.name}
+            Assign / Change Batch — {student.name}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
@@ -344,13 +374,19 @@ function AssignBatchDialog({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-foreground text-sm">Start Date</Label>
+            <Label className="text-foreground text-sm">
+              Effective From Date
+            </Label>
             <Input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               className="bg-input border-border"
             />
+            <p className="text-xs text-muted-foreground">
+              Fees will be adjusted from this date. Previous batch history is
+              preserved.
+            </p>
           </div>
         </div>
         <DialogFooter>
@@ -383,6 +419,7 @@ export default function StudentsPage() {
   const [assignStudent, setAssignStudent] = useState<Student | null>(null);
   const [dueCardStudent, setDueCardStudent] = useState<Student | null>(null);
 
+  const { isAdmin } = useAuth();
   const { data: students = [], isLoading } = useAllStudents();
   const { data: batches = [] } = useAllBatches();
   const markInactiveMutation = useMarkStudentInactive();
@@ -545,23 +582,27 @@ export default function StudentsPage() {
                       <ChevronDown className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Batch</span>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditStudent(student)}
-                      className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setInactiveStudentState(student)}
-                      className="text-muted-foreground hover:text-warning h-8 w-8 p-0"
-                      title="Mark Inactive"
-                    >
-                      <UserMinus className="w-3.5 h-3.5" />
-                    </Button>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditStudent(student)}
+                        className="text-muted-foreground hover:text-foreground h-8 w-8 p-0"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setInactiveStudentState(student)}
+                        className="text-muted-foreground hover:text-warning h-8 w-8 p-0"
+                        title="Mark Inactive"
+                      >
+                        <UserMinus className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

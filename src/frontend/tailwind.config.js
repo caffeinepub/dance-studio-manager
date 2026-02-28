@@ -88,8 +88,9 @@ export default {
       boxShadow: {
         xs: "0 1px 2px 0 rgba(0,0,0,0.05)",
         card: "0 4px 24px -4px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)",
-        glow: "0 0 24px oklch(0.75 0.15 65 / 0.3)",
-        "glow-accent": "0 0 24px oklch(0.65 0.18 25 / 0.3)",
+        glow: "0 0 28px oklch(0.58 0.26 27 / 0.45)",
+        "glow-accent": "0 0 28px oklch(0.52 0.22 22 / 0.35)",
+        "glow-red": "0 0 40px oklch(0.58 0.26 27 / 0.5)",
       },
       keyframes: {
         "accordion-down": {
