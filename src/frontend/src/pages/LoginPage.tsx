@@ -112,8 +112,8 @@ export default function LoginPage() {
               <div className="absolute inset-0 bg-primary/40 rounded-full blur-2xl scale-[2]" />
               <div className="relative w-24 h-24 rounded-full bg-primary/20 border-2 border-primary/50 flex items-center justify-center shadow-glow-red">
                 <img
-                  src="/assets/generated/dance-studio-logo-transparent.dim_200x200.png"
-                  alt="Dance Studio Logo"
+                  src="/assets/generated/dance-studio-logo.dim_200x200.png"
+                  alt="No. 1 Dance Group Logo"
                   className="w-16 h-16 object-contain drop-shadow-lg"
                 />
               </div>
