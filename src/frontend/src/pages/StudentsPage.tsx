@@ -949,14 +949,16 @@ export default function StudentsPage() {
                       <span className="hidden sm:inline">Due Card</span>
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => setAssignStudent(student)}
-                      className="text-muted-foreground hover:text-primary h-8 px-2 text-xs gap-1"
-                      title="Assign Batch"
+                      className="border-primary/50 text-primary hover:bg-primary/10 hover:border-primary h-8 px-2.5 text-xs gap-1.5 transition-all"
+                      title="Assign or Change Batch"
+                      data-ocid="student.assign.open_modal_button"
                     >
-                      <ChevronDown className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Batch</span>
+                      <Users className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Assign Batch</span>
+                      <ChevronDown className="w-3 h-3 opacity-70" />
                     </Button>
                     {isAdmin && (
                       <Button

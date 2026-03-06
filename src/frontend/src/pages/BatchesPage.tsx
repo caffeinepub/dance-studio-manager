@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -20,20 +20,39 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, Edit2, Music, Plus, Trash2, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  Edit2,
+  Music,
+  Plus,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Batch } from "../backend.d.ts";
 import { useAuth } from "../contexts/AuthContext";
 import {
   useAllBatches,
+  useAllStudents,
+  useAssignBatch,
   useCreateBatch,
   useDeleteBatch,
   useStudentsInBatch,
   useUpdateBatch,
 } from "../hooks/useQueries";
+
+// Helper: unwrap Motoko optional batchId (may be [] | [bigint] or bigint | undefined)
+function unwrapBatchId(raw: unknown): bigint | null {
+  if (raw === null || raw === undefined) return null;
+  if (Array.isArray(raw)) return raw.length > 0 ? (raw[0] as bigint) : null;
+  return raw as bigint;
+}
 
 const DAYS_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -238,6 +257,297 @@ function BatchFormDialog({
   );
 }
 
+// ─── Batch Student Assign Modal ───────────────────────────────────────────────
+
+function BatchStudentAssignModal({
+  batch,
+  onClose,
+}: {
+  batch: Batch;
+  onClose: () => void;
+}) {
+  const today = new Date().toISOString().split("T")[0];
+  const [effectiveFrom, setEffectiveFrom] = useState(today);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: allStudents = [], isLoading: studentsLoading } =
+    useAllStudents();
+  const { data: allBatches = [] } = useAllBatches();
+  const assignBatch = useAssignBatch();
+
+  // Only active students
+  const activeStudents = useMemo(
+    () => allStudents.filter((s) => s.isActive),
+    [allStudents],
+  );
+
+  // Build a batchId→name map
+  const batchNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const b of allBatches) {
+      m.set(b.id.toString(), b.name);
+    }
+    return m;
+  }, [allBatches]);
+
+  // Classify each student relative to this batch
+  const studentRows = useMemo(
+    () =>
+      activeStudents.map((student) => {
+        const currentBatchId = unwrapBatchId(student.currentBatchId);
+        const isInThisBatch =
+          currentBatchId !== null &&
+          currentBatchId.toString() === batch.id.toString();
+        const isInOtherBatch = currentBatchId !== null && !isInThisBatch;
+        const otherBatchName = isInOtherBatch
+          ? (batchNameMap.get(currentBatchId!.toString()) ?? "Another Batch")
+          : null;
+        return { student, isInThisBatch, isInOtherBatch, otherBatchName };
+      }),
+    [activeStudents, batch.id, batchNameMap],
+  );
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllUnassigned = () => {
+    const unassignedIds = studentRows
+      .filter((r) => !r.isInThisBatch && !r.isInOtherBatch)
+      .map((r) => r.student.id.toString());
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of unassignedIds) {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (selected.size === 0) return toast.error("No students selected");
+    if (!effectiveFrom) return toast.error("Effective from date is required");
+
+    // Only assign students NOT already in this batch
+    const toAssign = Array.from(selected).filter((idStr) => {
+      const row = studentRows.find((r) => r.student.id.toString() === idStr);
+      return row && !row.isInThisBatch;
+    });
+
+    if (toAssign.length === 0) {
+      return toast.error("All selected students are already in this batch");
+    }
+
+    setIsSubmitting(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const idStr of toAssign) {
+      try {
+        await assignBatch.mutateAsync({
+          studentId: BigInt(idStr),
+          batchId: batch.id,
+          startDate: effectiveFrom,
+        });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+
+    setIsSubmitting(false);
+
+    if (successCount > 0) {
+      toast.success(
+        `${successCount} student${successCount !== 1 ? "s" : ""} assigned to ${batch.name}`,
+      );
+    }
+    if (failCount > 0) {
+      toast.error(
+        `${failCount} assignment${failCount !== 1 ? "s" : ""} failed`,
+      );
+    }
+
+    onClose();
+  };
+
+  const unassignedCount = studentRows.filter(
+    (r) => !r.isInThisBatch && !r.isInOtherBatch,
+  ).length;
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        className="bg-card border-border max-w-lg"
+        data-ocid="batch.assign.dialog"
+      >
+        <DialogHeader>
+          <DialogTitle className="font-display text-foreground flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-primary" />
+            Assign Students — {batch.name}
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Effective From Date */}
+        <div className="space-y-1.5">
+          <Label className="text-foreground text-sm">Effective From Date</Label>
+          <Input
+            type="date"
+            value={effectiveFrom}
+            onChange={(e) => setEffectiveFrom(e.target.value)}
+            className="bg-input border-border"
+            data-ocid="batch.assign.input"
+          />
+          <p className="text-xs text-muted-foreground">
+            Fee due cards will regenerate from this month. Previous batch
+            records are preserved.
+          </p>
+        </div>
+
+        {/* Quick action */}
+        {unassignedCount > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={selectAllUnassigned}
+            className="border-primary/40 text-primary hover:bg-primary/10 w-full gap-2"
+            data-ocid="batch.assign.secondary_button"
+          >
+            <Users className="w-3.5 h-3.5" />
+            Select All Unassigned ({unassignedCount})
+          </Button>
+        )}
+
+        {/* Student list */}
+        {studentsLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-12 rounded-md" />
+            ))}
+          </div>
+        ) : activeStudents.length === 0 ? (
+          <div
+            className="text-center py-8 text-muted-foreground text-sm"
+            data-ocid="batch.assign.empty_state"
+          >
+            No active students found
+          </div>
+        ) : (
+          <ScrollArea className="h-72 border border-border rounded-md">
+            <div className="p-1 space-y-0.5">
+              {studentRows.map(
+                (
+                  { student, isInThisBatch, isInOtherBatch, otherBatchName },
+                  idx,
+                ) => {
+                  const idStr = student.id.toString();
+                  const isChecked = isInThisBatch || selected.has(idStr);
+                  const isDisabled = isInThisBatch;
+
+                  return (
+                    <div
+                      key={idStr}
+                      data-ocid={`batch.assign.item.${idx + 1}`}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
+                        isInThisBatch
+                          ? "opacity-60 bg-primary/5"
+                          : selected.has(idStr)
+                            ? "bg-primary/10"
+                            : "hover:bg-muted/50"
+                      }`}
+                    >
+                      <Checkbox
+                        id={`student-${idStr}`}
+                        checked={isChecked}
+                        disabled={isDisabled}
+                        onCheckedChange={() => !isDisabled && toggle(idStr)}
+                        className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        data-ocid={`batch.assign.checkbox.${idx + 1}`}
+                      />
+                      <label
+                        htmlFor={`student-${idStr}`}
+                        className={`flex-1 min-w-0 ${isDisabled ? "cursor-default" : "cursor-pointer"}`}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm text-foreground truncate">
+                            {student.name}
+                          </span>
+                          {isInThisBatch && (
+                            <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">
+                              Already in this batch
+                            </Badge>
+                          )}
+                          {isInOtherBatch && (
+                            <span className="flex items-center gap-1 text-xs text-amber-500">
+                              <AlertTriangle className="w-3 h-3" />
+                              Will change from {otherBatchName}
+                            </span>
+                          )}
+                          {!isInThisBatch && !isInOtherBatch && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-muted-foreground"
+                            >
+                              Unassigned
+                            </Badge>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          </ScrollArea>
+        )}
+
+        {selected.size > 0 && (
+          <p className="text-xs text-primary font-medium">
+            {selected.size} student{selected.size !== 1 ? "s" : ""} selected
+            {Array.from(selected).filter((id) =>
+              studentRows.find(
+                (r) => r.student.id.toString() === id && r.isInThisBatch,
+              ),
+            ).length > 0
+              ? ""
+              : ""}
+          </p>
+        )}
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            className="border-border"
+            data-ocid="batch.assign.cancel_button"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || selected.size === 0}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+            data-ocid="batch.assign.submit_button"
+          >
+            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isSubmitting
+              ? "Assigning..."
+              : `Assign${selected.size > 0 ? ` (${selected.size})` : ""}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function BatchStudentCount({ batchId }: { batchId: bigint }) {
   const { data: students = [], isLoading } = useStudentsInBatch(batchId);
   if (isLoading) return <Skeleton className="w-6 h-4 inline-block" />;
@@ -248,6 +558,9 @@ export default function BatchesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editBatch, setEditBatch] = useState<Batch | null>(null);
   const [deleteBatch, setDeleteBatch] = useState<Batch | null>(null);
+  const [assignStudentsBatch, setAssignStudentsBatch] = useState<Batch | null>(
+    null,
+  );
 
   const { isAdmin } = useAuth();
   const { data: batches = [], isLoading } = useAllBatches();
@@ -347,33 +660,48 @@ export default function BatchesPage() {
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
-                <Badge
-                  variant="secondary"
-                  className="bg-primary/10 text-primary border-primary/20 text-sm font-semibold"
+              <div className="mt-4 pt-3 border-t border-border space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant="secondary"
+                    className="bg-primary/10 text-primary border-primary/20 text-sm font-semibold"
+                  >
+                    ₹{batch.monthlyFees.toString()}/mo
+                  </Badge>
+                  {isAdmin && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditBatch(batch)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                        title="Edit batch"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteBatch(batch)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        title="Delete batch"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {/* Assign Students button — visible to admin and staff */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAssignStudentsBatch(batch)}
+                  className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10 hover:border-primary/60 transition-all"
+                  data-ocid="batch.assign.open_modal_button"
                 >
-                  ₹{batch.monthlyFees.toString()}/mo
-                </Badge>
-                {isAdmin && (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditBatch(batch)}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeleteBatch(batch)}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                )}
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Assign Students
+                </Button>
               </div>
             </div>
           ))}
@@ -389,6 +717,14 @@ export default function BatchesPage() {
             setEditBatch(null);
           }}
           batch={editBatch ?? undefined}
+        />
+      )}
+
+      {/* Assign Students Modal */}
+      {assignStudentsBatch && (
+        <BatchStudentAssignModal
+          batch={assignStudentsBatch}
+          onClose={() => setAssignStudentsBatch(null)}
         />
       )}
 

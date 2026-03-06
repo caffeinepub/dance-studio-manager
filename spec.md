@@ -1,36 +1,36 @@
 # Dance Studio Manager
 
 ## Current State
-The Student type in the backend stores: id, name, dateOfAdmission, age (Nat), gender, contactNumber, guardianName, guardianRelationship, guardianPhone, currentBatchId, isActive, admissionFees. There is no DOB field, no Aadhar fields for student or guardian. The frontend form has Age as a manual number input. Most fields are not enforced as required in the form.
+
+Full-stack dance studio management app with:
+- Student registration (DOB, Aadhar, guardian details, photo upload, admission fees)
+- Batch management with schedule days/times and monthly fees
+- Batch assignment (AssignBatchDialog in StudentsPage, BatchStudentAssignModal in BatchesPage)
+- Due card system per student per year with monthly entries
+- Solo programmes with schedule and registration
+- Fee collection (smart student-first filtering, Cash/UPI mode, receipt PDF)
+- Fee tracker (Puja, Annual Day, Other fees assigned to multiple students)
+- Year changeover with itemized opening balance carry-forward
+- Reports page (daily cash/UPI summary, fee-type breakdown)
+- Role-based auth (Admin/Staff/Guest) with custom login + auto-logout
+- User management page
+
+**Root problem recurring across all deployments:** `main.tsx` never includes `AuthProvider`. Every deployment regenerates `main.tsx` without it, causing `useAuth()` to throw and crash the app silently, showing only the gradient background.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `dateOfBirth` (Text) field to backend `Student` type
-- `studentAadhar` (Text) field to backend `Student` type
-- `guardianAadhar` (Text) field to backend `Student` type
-- DOB date input in frontend student form (required)
-- Student Aadhar Card Number input in Student Details section (required)
-- Guardian Aadhar Card Number input in Guardian Details section (required)
-- Auto-calculate age from DOB vs Date of Admission (display as read-only)
+- Nothing new feature-wise in this build
 
 ### Modify
-- Backend `createStudent` and `updateStudent` functions to accept and store `dateOfBirth`, `studentAadhar`, `guardianAadhar`
-- Frontend `StudentFormData` interface to include `dateOfBirth`, `studentAadhar`, `guardianAadhar`
-- Age field changed from manual input to read-only auto-populated display
-- All fields except photo marked as required with validation on submit: name, dateOfBirth, dateOfAdmission, gender, contactNumber, studentAadhar, guardianName, guardianRelationship, guardianPhone, guardianAadhar, admissionFees (for new student)
-- Student profile modal to show DOB, studentAadhar, guardianAadhar
+- `main.tsx`: Permanently wrap `<App />` with `<AuthProvider>` from `./contexts/AuthContext`. This is the single fix needed to stop blank pages.
+- Add a comment in `main.tsx` clearly marking `AuthProvider` as CRITICAL and must never be removed.
 
 ### Remove
-- Manual age number input (replaced by auto-calculated read-only display)
+- Nothing
 
 ## Implementation Plan
-1. Update `Student` type in `main.mo` to add `dateOfBirth`, `studentAadhar`, `guardianAadhar` fields
-2. Update `createStudent` function signature and body to accept and store the three new fields
-3. Update `updateStudent` function signature and body to accept and store the three new fields
-4. Update `backend.d.ts` to reflect the new Student type and function signatures
-5. Update `StudentFormData` interface in `StudentsPage.tsx` to add the three new fields
-6. Add DOB date input, Aadhar inputs to the form with required validation
-7. Replace Age manual input with a read-only calculated field (age = years between DOB and Date of Admission)
-8. Add required validation for all fields on submit (except photo)
-9. Update `StudentProfileModal` to display DOB, studentAadhar, guardianAadhar
+
+1. Edit `main.tsx` to add `AuthProvider` wrapper around `<App />` with a prominent CRITICAL comment.
+2. Validate frontend build passes.
+3. Deploy.
