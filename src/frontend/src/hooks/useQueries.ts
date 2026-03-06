@@ -835,17 +835,19 @@ export function useDeactivateAppUser() {
 }
 
 export function useSeedDefaultUsers() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
   return useQuery({
-    queryKey: ["seedDefaultUsers"],
+    // Include actor presence in key so it re-runs when actor first becomes available
+    queryKey: ["seedDefaultUsers", !!actor],
     queryFn: async () => {
       if (!actor) return null;
       await actor.seedDefaultUsers();
       return true;
     },
-    enabled: !!actor,
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: 3,
+    enabled: !!actor && !isFetching,
+    // Keep result for the session but re-run if actor key changes
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
   });
 }
 

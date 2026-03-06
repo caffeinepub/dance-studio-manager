@@ -430,6 +430,7 @@ function CreateUserTab({ onCreated }: { onCreated: () => void }) {
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border">
+                <SelectItem value="admin">Admin (Full access)</SelectItem>
                 <SelectItem value="staff">
                   Staff (Admissions + Fees + Dashboard)
                 </SelectItem>

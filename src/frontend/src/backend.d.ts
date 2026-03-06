@@ -141,6 +141,9 @@ export interface backendInterface {
     getBatch(id: bigint): Promise<Batch | null>;
     getBatchesByDay(day: bigint): Promise<Array<Batch>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
+    /**
+     * / Copied types from original actor
+     */
     getCallerUserRole(): Promise<UserRole>;
     getCurrentYear(): Promise<bigint>;
     getDueCard(studentId: bigint, year: bigint): Promise<DueCard | null>;

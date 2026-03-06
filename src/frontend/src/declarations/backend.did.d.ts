@@ -193,6 +193,9 @@ export interface _SERVICE {
   'getBatch' : ActorMethod<[bigint], [] | [Batch]>,
   'getBatchesByDay' : ActorMethod<[bigint], Array<Batch>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  /**
+   * / Copied types from original actor
+   */
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCurrentYear' : ActorMethod<[], bigint>,
   'getDueCard' : ActorMethod<[bigint, bigint], [] | [DueCard]>,

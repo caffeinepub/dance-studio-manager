@@ -12,7 +12,6 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
 
-// Complete with-clause for migrations
 
 actor {
   /// Copied types from original actor
@@ -203,11 +202,11 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // New AppUser functions - Admin only for user management
-  public shared ({ caller }) func seedDefaultUsers() : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can seed default users");
-    };
+  // New AppUser functions - public user management
+
+  // <id>:1<Update> - Remove shared({ caller }) from seedDefaultUsers
+  // Allow public seedDefaultUsers function
+  public shared func seedDefaultUsers() : async () {
     if (not appUsersSeeded) {
       let admin : AppUser = {
         id = 1;
@@ -252,16 +251,13 @@ actor {
     };
   };
 
-  // Admin-only user management
+  // PUBLIC user management functions (no access control)
   public shared ({ caller }) func createAppUser(
     username : Text,
     mobileNumber : Text,
     password : Text,
     role : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can create users");
-    };
     let user : AppUser = {
       id = nextAppUserId;
       username;
@@ -275,17 +271,13 @@ actor {
     user.id;
   };
 
+  // PUBLIC getAllAppUsers (no access control)
   public query ({ caller }) func getAllAppUsers() : async [AppUser] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view all users");
-    };
     appUsers.values().toArray();
   };
 
+  // PUBLIC resetUserPassword (no access control)
   public shared ({ caller }) func resetUserPassword(userId : Nat, newPassword : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can reset passwords");
-    };
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {
@@ -295,10 +287,8 @@ actor {
     };
   };
 
+  // PUBLIC deactivateAppUser (no access control)
   public shared ({ caller }) func deactivateAppUser(userId : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can deactivate users");
-    };
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {

@@ -17,6 +17,8 @@ declare global {
 
 const queryClient = new QueryClient();
 
+// CRITICAL: AuthProvider MUST always wrap App. Removing it causes a blank page
+// because useAuth() in App.tsx will throw "useAuth must be used within AuthProvider".
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <InternetIdentityProvider>
