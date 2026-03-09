@@ -275,6 +275,7 @@ export const idlService = IDL.Service({
   'markSoloComplete' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'markSoloPaid' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'markStudentInactive' : IDL.Func([IDL.Nat], [], []),
+  'reactivateStudent' : IDL.Func([IDL.Nat], [], []),
   'performYearChangeover' : IDL.Func([IDL.Nat], [], []),
   'recordFeePayment' : IDL.Func(
       [
@@ -594,6 +595,7 @@ export const idlFactory = ({ IDL }) => {
     'markSoloComplete' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'markSoloPaid' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'markStudentInactive' : IDL.Func([IDL.Nat], [], []),
+  'reactivateStudent' : IDL.Func([IDL.Nat], [], []),
     'performYearChangeover' : IDL.Func([IDL.Nat], [], []),
     'recordFeePayment' : IDL.Func(
         [

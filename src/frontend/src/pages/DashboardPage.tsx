@@ -23,10 +23,10 @@ import type { Page } from "../App";
 import type { Batch, SoloProgramme } from "../backend.d.ts";
 import {
   useAllSoloRegistrations,
+  useAllStudents,
   useBatchIds,
   useBatchesByDay,
   useSoloProgrammesByDay,
-  useStudentIds,
   useStudentsInBatch,
 } from "../hooks/useQueries";
 
@@ -461,7 +461,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     useSoloProgrammesByDay(selectedDayOfWeek);
 
   // Stats
-  const { data: studentIds = [], isLoading: studentsLoading } = useStudentIds();
+  const { data: allStudentsData = [], isLoading: studentsLoading } =
+    useAllStudents();
+  const activeStudentCount = allStudentsData.filter((s) => s.isActive).length;
   const { data: batchIds = [], isLoading: batchesLoading } = useBatchIds();
   const { data: allSoloRegistrations = [] } = useAllSoloRegistrations();
 
@@ -604,7 +606,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <Skeleton className="w-12 h-6 mt-0.5" />
               ) : (
                 <p className="font-display text-2xl font-bold text-foreground">
-                  {studentIds.length}
+                  {activeStudentCount}
                 </p>
               )}
             </div>

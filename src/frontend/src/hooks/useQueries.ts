@@ -340,6 +340,21 @@ export function useMarkStudentInactive() {
   });
 }
 
+export function useReactivateStudent() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.reactivateStudent(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["studentIds"] });
+    },
+  });
+}
+
 export function useMarkSoloPaid() {
   const { actor } = useActor();
   const qc = useQueryClient();

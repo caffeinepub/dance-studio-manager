@@ -462,6 +462,16 @@ actor {
     };
   };
 
+  public shared ({ caller }) func reactivateStudent(id : Nat) : async () {
+    switch (students.get(id)) {
+      case (null) {};
+      case (?student) {
+        let updated = { student with isActive = true };
+        students.add(id, updated);
+      };
+    };
+  };
+
   public query func getStudent(id : Nat) : async ?Student {
     students.get(id);
   };

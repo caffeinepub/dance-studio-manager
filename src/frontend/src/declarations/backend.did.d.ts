@@ -224,7 +224,8 @@ export interface _SERVICE {
   >,
   'markSoloComplete' : ActorMethod<[bigint, bigint], undefined>,
   'markSoloPaid' : ActorMethod<[bigint, bigint], undefined>,
-  'markStudentInactive' : ActorMethod<[bigint], undefined>,
+  'markStudentInactive' : ActorMethod<[bigint], undefined>;
+  'reactivateStudent' : ActorMethod<[bigint], undefined>,
   'performYearChangeover' : ActorMethod<[bigint], undefined>,
   'recordFeePayment' : ActorMethod<
     [

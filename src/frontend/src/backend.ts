@@ -261,6 +261,7 @@ export interface backendInterface {
     markSoloComplete(studentId: bigint, programmeId: bigint): Promise<void>;
     markSoloPaid(studentId: bigint, programmeId: bigint): Promise<void>;
     markStudentInactive(id: bigint): Promise<void>;
+    reactivateStudent(id: bigint): Promise<void>;
     performYearChangeover(toYear: bigint): Promise<void>;
     recordFeePayment(studentId: bigint, date: string, feeType: string, amount: bigint, remarks: string, month: bigint | null, year: bigint | null, paymentMode: string): Promise<bigint>;
     regenerateDueCardFromMonth(studentId: bigint, year: bigint, fromMonth: bigint): Promise<void>;
@@ -944,6 +945,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.markStudentInactive(arg0);
+            return result;
+        }
+    }
+    async reactivateStudent(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.reactivateStudent(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.reactivateStudent(arg0);
             return result;
         }
     }

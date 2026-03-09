@@ -1,9 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-// CRITICAL: AuthProvider MUST always be present here. Do NOT remove it.
-// Removing AuthProvider causes useAuth() to throw and the app to show a blank page.
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider } from "./contexts/AuthContext"; // CRITICAL: must always be present
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import "../index.css";
 
@@ -22,7 +20,7 @@ const queryClient = new QueryClient();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <InternetIdentityProvider>
-      {/* CRITICAL: AuthProvider must wrap App — never remove this wrapper */}
+      {/* CRITICAL: AuthProvider must always wrap App or useAuth() will throw */}
       <AuthProvider>
         <App />
       </AuthProvider>

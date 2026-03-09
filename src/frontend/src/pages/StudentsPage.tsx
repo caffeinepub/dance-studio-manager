@@ -53,6 +53,7 @@ import {
   useAssignBatch,
   useCreateStudent,
   useMarkStudentInactive,
+  useReactivateStudent,
   useUpdateStudent,
 } from "../hooks/useQueries";
 import { useStudentPhotos } from "../hooks/useStudentPhotos";
@@ -769,7 +770,15 @@ export default function StudentsPage() {
   const { data: students = [], isLoading } = useAllStudents();
   const { data: batches = [] } = useAllBatches();
   const markInactiveMutation = useMarkStudentInactive();
+  const reactivateMutation = useReactivateStudent();
   const { getPhotoUrl } = useStudentPhotos();
+
+  const inactiveStudents = students.filter(
+    (s) =>
+      !s.isActive &&
+      (s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.guardianName.toLowerCase().includes(search.toLowerCase())),
+  );
 
   const filteredStudents = students.filter(
     (s) =>
@@ -789,6 +798,17 @@ export default function StudentsPage() {
       await markInactiveMutation.mutateAsync(inactiveStudent.id);
       toast.success(`${inactiveStudent.name} marked as inactive`);
       setInactiveStudentState(null);
+    } catch (err) {
+      toast.error(
+        `Failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+    }
+  };
+
+  const handleReactivate = async (student: Student) => {
+    try {
+      await reactivateMutation.mutateAsync(student.id);
+      toast.success(`${student.name} marked as active`);
     } catch (err) {
       toast.error(
         `Failed: ${err instanceof Error ? err.message : "Unknown error"}`,
@@ -986,6 +1006,46 @@ export default function StudentsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Inactive Students Section */}
+      {inactiveStudents.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-display text-lg font-semibold text-muted-foreground border-t border-border pt-4">
+            Inactive Students ({inactiveStudents.length})
+          </h2>
+          <div className="space-y-2">
+            {inactiveStudents.map((student) => (
+              <div
+                key={student.id.toString()}
+                className="bg-card border border-border rounded-lg p-4 flex items-center gap-3 opacity-60"
+              >
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0">
+                  {student.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm text-foreground truncate">
+                    {student.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {student.guardianName}
+                  </p>
+                </div>
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-primary/50 text-primary hover:bg-primary/10 text-xs"
+                    onClick={() => handleReactivate(student)}
+                    disabled={reactivateMutation.isPending}
+                  >
+                    Mark Active
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
