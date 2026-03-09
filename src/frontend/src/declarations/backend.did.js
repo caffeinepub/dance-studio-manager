@@ -264,9 +264,9 @@ export const idlService = IDL.Service({
       [IDL.Opt(YearChangeoverRecord)],
       ['query'],
     ),
-  'guestLogin' : IDL.Func([IDL.Text, IDL.Text], [AppUser], []),
+  'guestLogin' : IDL.Func([IDL.Text, IDL.Text], [AppUser], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'loginUser' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AppUser)], []),
+  'loginUser' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AppUser)], ['query']),
   'markFeeAssignmentPaymentPaid' : IDL.Func(
       [IDL.Nat, IDL.Nat, IDL.Text],
       [],
@@ -583,9 +583,9 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(YearChangeoverRecord)],
         ['query'],
       ),
-    'guestLogin' : IDL.Func([IDL.Text, IDL.Text], [AppUser], []),
+    'guestLogin' : IDL.Func([IDL.Text, IDL.Text], [AppUser], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'loginUser' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AppUser)], []),
+    'loginUser' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AppUser)], ['query']),
     'markFeeAssignmentPaymentPaid' : IDL.Func(
         [IDL.Nat, IDL.Nat, IDL.Text],
         [],

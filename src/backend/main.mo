@@ -11,8 +11,6 @@ import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-
-
 actor {
   /// Copied types from original actor
   type Batch = {
@@ -204,9 +202,8 @@ actor {
 
   // New AppUser functions - public user management
 
-  // <id>:1<Update> - Remove shared({ caller }) from seedDefaultUsers
-  // Allow public seedDefaultUsers function
-  public shared func seedDefaultUsers() : async () {
+  // seedDefaultUsers - public, no auth required (initialization function)
+  public func seedDefaultUsers() : async () {
     if (not appUsersSeeded) {
       let admin : AppUser = {
         id = 1;
@@ -231,7 +228,7 @@ actor {
   };
 
   // Login functions - no auth required (public login endpoints)
-  public shared ({ caller }) func loginUser(mobileNumber : Text, password : Text) : async ?AppUser {
+  public query func loginUser(mobileNumber : Text, password : Text) : async ?AppUser {
     for ((_, user) in appUsers.entries()) {
       if (user.mobileNumber == mobileNumber and user.password == password and user.isActive) {
         return ?user;
@@ -240,7 +237,7 @@ actor {
     null;
   };
 
-  public shared ({ caller }) func guestLogin(name : Text, mobileNumber : Text) : async AppUser {
+  public query func guestLogin(name : Text, mobileNumber : Text) : async AppUser {
     {
       id = 0;
       username = name;
@@ -251,13 +248,16 @@ actor {
     };
   };
 
-  // PUBLIC user management functions (no access control)
+  // Admin-only user management functions
   public shared ({ caller }) func createAppUser(
     username : Text,
     mobileNumber : Text,
     password : Text,
     role : Text,
   ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can create users");
+    };
     let user : AppUser = {
       id = nextAppUserId;
       username;
@@ -271,13 +271,19 @@ actor {
     user.id;
   };
 
-  // PUBLIC getAllAppUsers (no access control)
+  // Admin-only getAllAppUsers
   public query ({ caller }) func getAllAppUsers() : async [AppUser] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view all users");
+    };
     appUsers.values().toArray();
   };
 
-  // PUBLIC resetUserPassword (no access control)
+  // Admin-only resetUserPassword
   public shared ({ caller }) func resetUserPassword(userId : Nat, newPassword : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can reset passwords");
+    };
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {
@@ -287,8 +293,11 @@ actor {
     };
   };
 
-  // PUBLIC deactivateAppUser (no access control)
+  // Admin-only deactivateAppUser
   public shared ({ caller }) func deactivateAppUser(userId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can deactivate users");
+    };
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {
@@ -298,7 +307,7 @@ actor {
     };
   };
 
-  // Batch Management - Requires user permission
+  // Batch Management - No permissions as per requirements
   public shared ({ caller }) func createBatch(
     name : Text,
     daysOfWeek : [Nat],
@@ -306,9 +315,6 @@ actor {
     endTime : Text,
     monthlyFees : Nat,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create batches");
-    };
     let batch : Batch = {
       id = nextBatchId;
       name;
@@ -331,9 +337,6 @@ actor {
     endTime : Text,
     monthlyFees : Nat,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update batches");
-    };
     switch (batches.get(id)) {
       case (null) {};
       case (?batch) {
@@ -351,9 +354,6 @@ actor {
   };
 
   public shared ({ caller }) func deleteBatch(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can delete batches");
-    };
     switch (batches.get(id)) {
       case (null) {};
       case (?batch) {
@@ -363,11 +363,11 @@ actor {
     };
   };
 
-  public query ({ caller }) func getBatch(id : Nat) : async ?Batch {
+  public query func getBatch(id : Nat) : async ?Batch {
     batches.get(id);
   };
 
-  public query ({ caller }) func getBatchesByDay(day : Nat) : async [Batch] {
+  public query func getBatchesByDay(day : Nat) : async [Batch] {
     let result = List.empty<Batch>();
     for ((_, batch) in batches.entries()) {
       if (batch.isActive and batch.daysOfWeek.any(func(dayOfWeek) { dayOfWeek == day })) {
@@ -377,11 +377,11 @@ actor {
     result.toArray();
   };
 
-  public query ({ caller }) func getAllBatches() : async [Batch] {
+  public query func getAllBatches() : async [Batch] {
     batches.values().toArray();
   };
 
-  // Student Management - Requires user permission
+  // Student Management - No permissions as per requirements
   public shared ({ caller }) func createStudent(
     name : Text,
     dateOfAdmission : Text,
@@ -396,9 +396,6 @@ actor {
     guardianAadhar : Text,
     admissionFees : Nat,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create students");
-    };
     let student : Student = {
       id = nextStudentId;
       name;
@@ -434,9 +431,6 @@ actor {
     guardianPhone : Text,
     guardianAadhar : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update students");
-    };
     switch (students.get(id)) {
       case (null) {};
       case (?student) {
@@ -459,9 +453,6 @@ actor {
   };
 
   public shared ({ caller }) func markStudentInactive(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can mark students inactive");
-    };
     switch (students.get(id)) {
       case (null) {};
       case (?student) {
@@ -471,11 +462,11 @@ actor {
     };
   };
 
-  public query ({ caller }) func getStudent(id : Nat) : async ?Student {
+  public query func getStudent(id : Nat) : async ?Student {
     students.get(id);
   };
 
-  public query ({ caller }) func getStudentsInBatch(batchId : Nat) : async [Student] {
+  public query func getStudentsInBatch(batchId : Nat) : async [Student] {
     let result = List.empty<Student>();
     for ((_, student) in students.entries()) {
       if (student.currentBatchId == ?batchId and student.isActive) {
@@ -485,19 +476,16 @@ actor {
     result.toArray();
   };
 
-  public query ({ caller }) func getAllStudents() : async [Student] {
+  public query func getAllStudents() : async [Student] {
     students.values().toArray();
   };
 
-  // Batch Assignment - Requires user permission
+  // Batch Assignment - No permissions as per requirements
   public shared ({ caller }) func assignStudentToBatch(
     studentId : Nat,
     batchId : Nat,
     startDate : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can assign students to batches");
-    };
     // Deactivate previous assignments
     for ((key, assignment) in batchAssignments.entries()) {
       if (assignment.studentId == studentId and assignment.isActive) {
@@ -543,11 +531,8 @@ actor {
     };
   };
 
-  // Due Cards - Requires user permission for modifications
+  // Due Cards - No permissions as per requirements
   public shared ({ caller }) func generateDueCard(studentId : Nat, year : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can generate due cards");
-    };
     switch (students.get(studentId)) {
       case (null) {};
       case (?student) {
@@ -591,9 +576,6 @@ actor {
     year : Nat,
     fromMonth : Nat,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can regenerate due cards");
-    };
     let key = studentId * 10000 + year;
     switch (dueCards.get(key)) {
       case (null) { () };
@@ -650,12 +632,12 @@ actor {
     };
   };
 
-  public query ({ caller }) func getDueCard(studentId : Nat, year : Nat) : async ?DueCard {
+  public query func getDueCard(studentId : Nat, year : Nat) : async ?DueCard {
     let key = studentId * 10000 + year;
     dueCards.get(key);
   };
 
-  // Solo Programmes - Requires user permission
+  // Solo Programmes - No permissions as per requirements
   public shared ({ caller }) func createSoloProgramme(
     name : Text,
     description : Text,
@@ -664,9 +646,6 @@ actor {
     scheduleTime : Text,
     scheduleDays : [Nat],
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create solo programmes");
-    };
     let programme : SoloProgramme = {
       id = nextProgrammeId;
       name;
@@ -681,15 +660,15 @@ actor {
     programme.id;
   };
 
-  public query ({ caller }) func getSoloProgramme(id : Nat) : async ?SoloProgramme {
+  public query func getSoloProgramme(id : Nat) : async ?SoloProgramme {
     soloProgrammes.get(id);
   };
 
-  public query ({ caller }) func getAllSoloProgrammes() : async [SoloProgramme] {
+  public query func getAllSoloProgrammes() : async [SoloProgramme] {
     soloProgrammes.values().toArray();
   };
 
-  public query ({ caller }) func getSoloProgrammesByDay(day : Nat) : async [SoloProgramme] {
+  public query func getSoloProgrammesByDay(day : Nat) : async [SoloProgramme] {
     let result = List.empty<SoloProgramme>();
     for ((_, programme) in soloProgrammes.entries()) {
       if (programme.scheduleDays.any(func(dayOfWeek) { dayOfWeek == day })) {
@@ -699,15 +678,12 @@ actor {
     result.toArray();
   };
 
-  // Solo Registrations - Requires user permission
+  // Solo Registrations - No permissions as per requirements
   public shared ({ caller }) func registerStudentForSolo(
     studentId : Nat,
     programmeId : Nat,
     feeAmount : Nat,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can register students for solo programmes");
-    };
     let registration : SoloRegistration = {
       studentId;
       programmeId;
@@ -719,11 +695,11 @@ actor {
     nextRegistrationId += 1;
   };
 
-  public query ({ caller }) func getAllSoloRegistrations() : async [SoloRegistration] {
+  public query func getAllSoloRegistrations() : async [SoloRegistration] {
     soloRegistrations.values().toArray();
   };
 
-  public query ({ caller }) func getSoloRegistrationsForStudent(studentId : Nat) : async [SoloRegistration] {
+  public query func getSoloRegistrationsForStudent(studentId : Nat) : async [SoloRegistration] {
     let result = List.empty<SoloRegistration>();
     for ((_, reg) in soloRegistrations.entries()) {
       if (reg.studentId == studentId) {
@@ -734,9 +710,6 @@ actor {
   };
 
   public shared ({ caller }) func markSoloPaid(studentId : Nat, programmeId : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can mark solo programmes as paid");
-    };
     for ((key, reg) in soloRegistrations.entries()) {
       if (reg.studentId == studentId and reg.programmeId == programmeId) {
         let updated = { reg with isPaid = true };
@@ -746,9 +719,6 @@ actor {
   };
 
   public shared ({ caller }) func markSoloComplete(studentId : Nat, programmeId : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can mark solo programmes as complete");
-    };
     for ((key, reg) in soloRegistrations.entries()) {
       if (reg.studentId == studentId and reg.programmeId == programmeId) {
         let updated = { reg with isCompleted = true };
@@ -766,7 +736,7 @@ actor {
     };
   };
 
-  // Fee Payments with Receipt Tracking - Requires user permission
+  // Fee Payments with Receipt Tracking - No permissions as per requirements
   public shared ({ caller }) func recordFeePayment(
     studentId : Nat,
     date : Text,
@@ -777,9 +747,6 @@ actor {
     year : ?Nat,
     paymentMode : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can record fee payments");
-    };
     receiptCounter += 1;
     let receiptNumber = receiptCounter;
     let payment : FeePayment = {
@@ -798,7 +765,7 @@ actor {
     receiptNumber;
   };
 
-  public query ({ caller }) func getPaymentsForStudent(studentId : Nat) : async [FeePayment] {
+  public query func getPaymentsForStudent(studentId : Nat) : async [FeePayment] {
     let payments = List.empty<FeePayment>();
     for ((_, payment) in feePayments.entries()) {
       if (payment.studentId == studentId) {
@@ -808,28 +775,25 @@ actor {
     payments.toArray();
   };
 
-  public query ({ caller }) func getAllPayments() : async [FeePayment] {
+  public query func getAllPayments() : async [FeePayment] {
     let paymentsArray = feePayments.values().toArray();
     paymentsArray.sort(func(p1, p2) { Nat.compare(p2.receiptNumber, p1.receiptNumber) });
   };
 
-  public query ({ caller }) func getNextReceiptNumber() : async Nat {
+  public query func getNextReceiptNumber() : async Nat {
     receiptCounter + 1;
   };
 
-  // Current Year - Admin only for updates
-  public query ({ caller }) func getCurrentYear() : async Nat {
+  // Current Year - No permissions as per requirements
+  public query func getCurrentYear() : async Nat {
     currentYear;
   };
 
   public shared ({ caller }) func updateCurrentYear(year : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can update the current year");
-    };
     currentYear := year;
   };
 
-  // FeeAssignment Management - Requires user permission
+  // FeeAssignment Management - No permissions as per requirements
   public shared ({ caller }) func createFeeAssignment(
     name : Text,
     feeType : FeeAssignmentType,
@@ -838,9 +802,6 @@ actor {
     studentIds : [Nat],
     description : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create fee assignments");
-    };
     let assignment : FeeAssignment = {
       id = nextFeeAssignmentId;
       name;
@@ -868,11 +829,11 @@ actor {
     assignment.id;
   };
 
-  public query ({ caller }) func getAllFeeAssignments() : async [FeeAssignment] {
+  public query func getAllFeeAssignments() : async [FeeAssignment] {
     feeAssignments.values().toArray();
   };
 
-  public query ({ caller }) func getFeeAssignmentPayments(assignmentId : Nat) : async [FeeAssignmentPayment] {
+  public query func getFeeAssignmentPayments(assignmentId : Nat) : async [FeeAssignmentPayment] {
     let payments = List.empty<FeeAssignmentPayment>();
     for ((_, payment) in feeAssignmentPayments.entries()) {
       if (payment.assignmentId == assignmentId) {
@@ -887,9 +848,6 @@ actor {
     studentId : Nat,
     paidDate : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can mark fee assignment payments as paid");
-    };
     let paymentKey = assignmentId * 1000000 + studentId;
     switch (feeAssignmentPayments.get(paymentKey)) {
       case (null) {};
@@ -900,7 +858,7 @@ actor {
     };
   };
 
-  public query ({ caller }) func getAllFeeAssignmentPaymentsForStudent(studentId : Nat) : async [FeeAssignmentPayment] {
+  public query func getAllFeeAssignmentPaymentsForStudent(studentId : Nat) : async [FeeAssignmentPayment] {
     let payments = List.empty<FeeAssignmentPayment>();
     for ((_, payment) in feeAssignmentPayments.entries()) {
       if (payment.studentId == studentId) {
@@ -910,16 +868,13 @@ actor {
     payments.toArray();
   };
 
-  // Year Changeover - Admin only
-  public query ({ caller }) func getYearChangeoverRecord(studentId : Nat, year : Nat) : async ?YearChangeoverRecord {
+  // Year Changeover - No permissions as per requirements
+  public query func getYearChangeoverRecord(studentId : Nat, year : Nat) : async ?YearChangeoverRecord {
     let key = studentId * 10000 + year;
     yearChangeoverRecords.get(key);
   };
 
   public shared ({ caller }) func performYearChangeover(toYear : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform year changeover");
-    };
     let studentIds = students.keys().toArray();
 
     for (studentId in studentIds.values()) {
@@ -1031,4 +986,3 @@ actor {
     currentYear := toYear;
   };
 };
-
