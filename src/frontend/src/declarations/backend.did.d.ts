@@ -18,6 +18,18 @@ export interface AppUser {
   'mobileNumber' : string,
   'isActive' : boolean,
 }
+export interface AttendanceRecord {
+  'id' : bigint,
+  'status' : AttendanceStatus,
+  'studentId' : bigint,
+  'date' : string,
+  'submittedBy' : string,
+  'isLocked' : boolean,
+  'batchId' : bigint,
+}
+export type AttendanceStatus = { 'present' : null } |
+  { 'absent' : null } |
+  { 'holiday' : null };
 export interface Batch {
   'id' : bigint,
   'startTime' : string,
@@ -94,15 +106,16 @@ export interface Student {
   'dateOfBirth' : string,
   'admissionFees' : bigint,
   'name' : string,
-  'guardianRelationship' : string,
+  'motherName' : string,
   'isActive' : boolean,
-  'guardianPhone' : string,
+  'fatherName' : string,
   'gender' : string,
   'contactNumber' : string,
+  'motherMobile' : string,
   'guardianAadhar' : string,
   'currentBatchId' : [] | [bigint],
-  'guardianName' : string,
   'studentAadhar' : string,
+  'fatherMobile' : string,
   'dateOfAdmission' : string,
 }
 export interface UserProfile { 'name' : string }
@@ -172,6 +185,7 @@ export interface _SERVICE {
       string,
       string,
       string,
+      string,
       bigint,
     ],
     bigint
@@ -190,9 +204,17 @@ export interface _SERVICE {
   'getAllSoloProgrammes' : ActorMethod<[], Array<SoloProgramme>>,
   'getAllSoloRegistrations' : ActorMethod<[], Array<SoloRegistration>>,
   'getAllStudents' : ActorMethod<[], Array<Student>>,
+  'getAttendanceForBatch' : ActorMethod<
+    [bigint, string],
+    Array<AttendanceRecord>
+  >,
+  'getAttendanceForStudent' : ActorMethod<[bigint], Array<AttendanceRecord>>,
   'getBatch' : ActorMethod<[bigint], [] | [Batch]>,
   'getBatchesByDay' : ActorMethod<[bigint], Array<Batch>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  /**
+   * / Copied types from original actor
+   */
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCurrentYear' : ActorMethod<[], bigint>,
   'getDueCard' : ActorMethod<[bigint, bigint], [] | [DueCard]>,
@@ -216,17 +238,23 @@ export interface _SERVICE {
     [] | [YearChangeoverRecord]
   >,
   'guestLogin' : ActorMethod<[string, string], AppUser>,
+  'isAttendanceSubmitted' : ActorMethod<[bigint, string], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'loginUser' : ActorMethod<[string, string], [] | [AppUser]>,
   'markFeeAssignmentPaymentPaid' : ActorMethod<
     [bigint, bigint, string],
     undefined
   >,
+  'markHoliday' : ActorMethod<[bigint, string, string], undefined>,
   'markSoloComplete' : ActorMethod<[bigint, bigint], undefined>,
   'markSoloPaid' : ActorMethod<[bigint, bigint], undefined>,
-  'markStudentInactive' : ActorMethod<[bigint], undefined>;
-  'reactivateStudent' : ActorMethod<[bigint], undefined>,
+  'markStudentInactive' : ActorMethod<[bigint], undefined>,
+  'modifyAttendance' : ActorMethod<
+    [bigint, string, Array<bigint>, string],
+    undefined
+  >,
   'performYearChangeover' : ActorMethod<[bigint], undefined>,
+  'reactivateStudent' : ActorMethod<[bigint], undefined>,
   'recordFeePayment' : ActorMethod<
     [
       bigint,
@@ -245,9 +273,14 @@ export interface _SERVICE {
     undefined
   >,
   'registerStudentForSolo' : ActorMethod<[bigint, bigint, bigint], undefined>,
+  'resetAllData' : ActorMethod<[], undefined>,
   'resetUserPassword' : ActorMethod<[bigint, string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'seedDefaultUsers' : ActorMethod<[], undefined>,
+  'submitAttendance' : ActorMethod<
+    [bigint, string, Array<bigint>, string],
+    bigint
+  >,
   'updateBatch' : ActorMethod<
     [bigint, string, Array<bigint>, string, string, bigint],
     undefined
@@ -259,6 +292,7 @@ export interface _SERVICE {
       string,
       string,
       bigint,
+      string,
       string,
       string,
       string,

@@ -346,7 +346,7 @@ function StudentCombobox({
   const filtered = students.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.guardianName.toLowerCase().includes(search.toLowerCase()),
+      s.fatherName.toLowerCase().includes(search.toLowerCase()),
   );
 
   const handleSelect = (id: string) => {
@@ -370,7 +370,7 @@ function StudentCombobox({
               {selected.name}
             </span>
             <span className="text-xs text-muted-foreground ml-2">
-              {selected.guardianName}
+              {selected.fatherName} / {selected.motherName}
             </span>
           </div>
           <button
@@ -408,7 +408,7 @@ function StudentCombobox({
                 >
                   <span className="font-medium">{s.name}</span>
                   <span className="text-muted-foreground ml-2 text-xs">
-                    {s.guardianName}
+                    {s.fatherName}
                   </span>
                 </button>
               ))}
@@ -671,7 +671,7 @@ function RecordPaymentTab({
         receiptNumber,
         date: form.date,
         studentName: selectedStudent?.name ?? "",
-        guardianName: selectedStudent?.guardianName ?? "",
+        guardianName: `${selectedStudent?.fatherName ?? ""} / ${selectedStudent?.motherName ?? ""}`,
         feeType: form.feeType,
         feeTypeLabel,
         month: form.month ? Number(form.month) : undefined,
@@ -1201,7 +1201,7 @@ function PaymentHistoryTab({ students }: { students: Student[] }) {
       receiptNumber: payment.receiptNumber,
       date: payment.date,
       studentName: s.name,
-      guardianName: s.guardianName,
+      guardianName: `${s.fatherName} / ${s.motherName}`,
       feeType: payment.feeType,
       feeTypeLabel: feeTypeLabel(payment.feeType),
       month: payment.month !== undefined ? Number(payment.month) : undefined,

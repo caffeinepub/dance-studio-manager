@@ -134,7 +134,7 @@ function AssignTab() {
   const filteredStudents = activeStudents.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.guardianName.toLowerCase().includes(search.toLowerCase()),
+      s.fatherName.toLowerCase().includes(search.toLowerCase()),
   );
 
   const toggleStudent = (id: string) => {
@@ -374,7 +374,7 @@ function AssignTab() {
                       {student.name}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {student.guardianName}
+                      {student.fatherName}
                     </p>
                   </label>
                   {checked && (

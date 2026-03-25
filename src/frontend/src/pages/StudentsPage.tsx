@@ -60,7 +60,6 @@ import { useStudentPhotos } from "../hooks/useStudentPhotos";
 import { getStorageClient } from "../utils/getStorageClient";
 
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
-const GUARDIAN_REL_OPTIONS = ["Father", "Mother", "Self", "Other"];
 
 interface StudentFormData {
   name: string;
@@ -69,9 +68,10 @@ interface StudentFormData {
   gender: string;
   contactNumber: string;
   studentAadhar: string;
-  guardianName: string;
-  guardianRelationship: string;
-  guardianPhone: string;
+  fatherName: string;
+  fatherMobile: string;
+  motherName: string;
+  motherMobile: string;
   guardianAadhar: string;
   admissionFees: string;
 }
@@ -83,9 +83,10 @@ const emptyForm: StudentFormData = {
   gender: "",
   contactNumber: "",
   studentAadhar: "",
-  guardianName: "",
-  guardianRelationship: "",
-  guardianPhone: "",
+  fatherName: "",
+  fatherMobile: "",
+  motherName: "",
+  motherMobile: "",
   guardianAadhar: "",
   admissionFees: "",
 };
@@ -100,7 +101,7 @@ function calcAgeAtAdmission(dob: string, admissionDate: string): number | null {
   return age >= 0 ? age : null;
 }
 
-// ─── Student Form Dialog ─────────────────────────────────────────────────────
+// ─── Student Form Dialog ──────────────────────────────────────────────────────
 
 function StudentFormDialog({
   open,
@@ -122,16 +123,16 @@ function StudentFormDialog({
           gender: student.gender,
           contactNumber: student.contactNumber,
           studentAadhar: student.studentAadhar,
-          guardianName: student.guardianName,
-          guardianRelationship: student.guardianRelationship,
-          guardianPhone: student.guardianPhone,
+          fatherName: student.fatherName,
+          fatherMobile: student.fatherMobile,
+          motherName: student.motherName,
+          motherMobile: student.motherMobile,
           guardianAadhar: student.guardianAadhar,
           admissionFees: "",
         }
       : emptyForm,
   );
 
-  // Photo state
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     student ? getPhotoUrl(student.id) : null,
@@ -164,7 +165,6 @@ function StudentFormDialog({
       setPhotoFile(file);
       const preview = URL.createObjectURL(file);
       setPhotoPreview((prev) => {
-        // revoke old object URL if it was created from a file (not a remote URL)
         if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
         return preview;
       });
@@ -191,7 +191,6 @@ function StudentFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Required field validation (all except photo)
     if (!form.name.trim()) return toast.error("Student name is required");
     if (!form.dateOfBirth) return toast.error("Date of birth is required");
     if (!form.dateOfAdmission)
@@ -201,12 +200,14 @@ function StudentFormDialog({
       return toast.error("Contact number is required");
     if (!form.studentAadhar.trim())
       return toast.error("Student Aadhar number is required");
-    if (!form.guardianName.trim())
-      return toast.error("Guardian name is required");
-    if (!form.guardianRelationship)
-      return toast.error("Guardian relationship is required");
-    if (!form.guardianPhone.trim())
-      return toast.error("Guardian phone is required");
+    if (!form.fatherName.trim())
+      return toast.error("Father's name is required");
+    if (!form.fatherMobile.trim())
+      return toast.error("Father's mobile is required");
+    if (!form.motherName.trim())
+      return toast.error("Mother's name is required");
+    if (!form.motherMobile.trim())
+      return toast.error("Mother's mobile is required");
     if (!form.guardianAadhar.trim())
       return toast.error("Guardian Aadhar number is required");
     if (!student && !form.admissionFees.trim())
@@ -227,15 +228,13 @@ function StudentFormDialog({
           gender: form.gender,
           contactNumber: form.contactNumber.trim(),
           studentAadhar: form.studentAadhar.trim(),
-          guardianName: form.guardianName.trim(),
-          guardianRelationship: form.guardianRelationship,
-          guardianPhone: form.guardianPhone.trim(),
+          fatherName: form.fatherName.trim(),
+          fatherMobile: form.fatherMobile.trim(),
+          motherName: form.motherName.trim(),
+          motherMobile: form.motherMobile.trim(),
           guardianAadhar: form.guardianAadhar.trim(),
         });
-        // Upload photo if new one selected
-        if (photoFile) {
-          await uploadPhoto(student.id);
-        }
+        if (photoFile) await uploadPhoto(student.id);
         toast.success("Student updated successfully");
       } else {
         const newId = await createStudent.mutateAsync({
@@ -246,16 +245,14 @@ function StudentFormDialog({
           gender: form.gender,
           contactNumber: form.contactNumber.trim(),
           studentAadhar: form.studentAadhar.trim(),
-          guardianName: form.guardianName.trim(),
-          guardianRelationship: form.guardianRelationship,
-          guardianPhone: form.guardianPhone.trim(),
+          fatherName: form.fatherName.trim(),
+          fatherMobile: form.fatherMobile.trim(),
+          motherName: form.motherName.trim(),
+          motherMobile: form.motherMobile.trim(),
           guardianAadhar: form.guardianAadhar.trim(),
           admissionFees: BigInt(form.admissionFees || "0"),
         });
-        // Upload photo if selected
-        if (photoFile) {
-          await uploadPhoto(newId);
-        }
+        if (photoFile) await uploadPhoto(newId);
         toast.success("Student registered successfully");
         setForm(emptyForm);
       }
@@ -276,7 +273,7 @@ function StudentFormDialog({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          {/* Photo upload section */}
+          {/* Photo upload */}
           {canUploadPhoto && (
             <div className="flex flex-col items-center gap-3 pb-3 border-b border-border">
               <div className="relative">
@@ -297,7 +294,6 @@ function StudentFormDialog({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors shadow-md"
-                  title="Upload photo"
                 >
                   <Camera className="w-3.5 h-3.5" />
                 </button>
@@ -404,46 +400,50 @@ function StudentFormDialog({
                 className="bg-input border-border"
               />
             </div>
+
+            {/* Guardian Details */}
             <div className="col-span-2 border-t border-border pt-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
                 Guardian Details
               </p>
             </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label className="text-foreground text-sm">Guardian Name *</Label>
+            <div className="space-y-1.5">
+              <Label className="text-foreground text-sm">Father's Name *</Label>
               <Input
-                value={form.guardianName}
-                onChange={(e) => set("guardianName", e.target.value)}
-                placeholder="Guardian's full name"
+                value={form.fatherName}
+                onChange={(e) => set("fatherName", e.target.value)}
+                placeholder="Father's full name"
                 className="bg-input border-border"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-foreground text-sm">Relationship *</Label>
-              <Select
-                value={form.guardianRelationship}
-                onValueChange={(v) => set("guardianRelationship", v)}
-              >
-                <SelectTrigger className="bg-input border-border">
-                  <SelectValue placeholder="Relationship" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  {GUARDIAN_REL_OPTIONS.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-foreground text-sm">
+                Father's Mobile *
+              </Label>
+              <Input
+                value={form.fatherMobile}
+                onChange={(e) => set("fatherMobile", e.target.value)}
+                placeholder="Father's mobile number"
+                className="bg-input border-border"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-foreground text-sm">Mother's Name *</Label>
+              <Input
+                value={form.motherName}
+                onChange={(e) => set("motherName", e.target.value)}
+                placeholder="Mother's full name"
+                className="bg-input border-border"
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-foreground text-sm">
-                Guardian Phone *
+                Mother's Mobile *
               </Label>
               <Input
-                value={form.guardianPhone}
-                onChange={(e) => set("guardianPhone", e.target.value)}
-                placeholder="Guardian's phone"
+                value={form.motherMobile}
+                onChange={(e) => set("motherMobile", e.target.value)}
+                placeholder="Mother's mobile number"
                 className="bg-input border-border"
               />
             </div>
@@ -459,31 +459,31 @@ function StudentFormDialog({
                 className="bg-input border-border"
               />
             </div>
-            {/* Admission Fees — only for new student registration */}
+
             {!student && (
-              <div className="col-span-2 border-t border-border pt-3">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
-                  Fee Details
-                </p>
-              </div>
-            )}
-            {!student && (
-              <div className="col-span-2 space-y-1.5">
-                <Label className="text-foreground text-sm">
-                  Admission Fees (₹) *
-                </Label>
-                <Input
-                  type="number"
-                  value={form.admissionFees}
-                  onChange={(e) => set("admissionFees", e.target.value)}
-                  placeholder="e.g. 500"
-                  min="0"
-                  className="bg-input border-border"
-                />
-                <p className="text-xs text-muted-foreground">
-                  This will appear as a pending due in Fee Collection.
-                </p>
-              </div>
+              <>
+                <div className="col-span-2 border-t border-border pt-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
+                    Fee Details
+                  </p>
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <Label className="text-foreground text-sm">
+                    Admission Fees (₹) *
+                  </Label>
+                  <Input
+                    type="number"
+                    value={form.admissionFees}
+                    onChange={(e) => set("admissionFees", e.target.value)}
+                    placeholder="e.g. 500"
+                    min="0"
+                    className="bg-input border-border"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This will appear as a pending due in Fee Collection.
+                  </p>
+                </div>
+              </>
             )}
           </div>
           <DialogFooter>
@@ -510,7 +510,7 @@ function StudentFormDialog({
   );
 }
 
-// ─── Student Profile Modal ───────────────────────────────────────────────────
+// ─── Student Profile Modal ─────────────────────────────────────────────────────
 
 function StudentProfileModal({
   student,
@@ -532,10 +532,8 @@ function StudentProfileModal({
             Student Profile
           </DialogTitle>
         </DialogHeader>
-
-        {/* Photo + name */}
         <div className="flex flex-col items-center gap-3 py-4">
-          <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-primary/40 bg-primary/10 flex items-center justify-center shadow-lg shadow-primary/10">
+          <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-primary/40 bg-primary/10 flex items-center justify-center shadow-lg">
             {photoUrl ? (
               <img
                 src={photoUrl}
@@ -560,7 +558,6 @@ function StudentProfileModal({
           </div>
         </div>
 
-        {/* Details grid */}
         <div className="space-y-3 border-t border-border pt-4">
           <ProfileRow label="Admission Date" value={student.dateOfAdmission} />
           {student.dateOfBirth && (
@@ -596,23 +593,26 @@ function StudentProfileModal({
 
           <div className="border-t border-border pt-3">
             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-2">
-              Guardian
+              Guardian Details
             </p>
             <ProfileRow
-              label="Name"
-              value={`${student.guardianName} (${student.guardianRelationship || "—"})`}
+              label="Father"
+              value={
+                <span className="flex items-center gap-1">
+                  <Phone className="w-3 h-3" />
+                  {student.fatherName} · {student.fatherMobile}
+                </span>
+              }
             />
-            {student.guardianPhone && (
-              <ProfileRow
-                label="Phone"
-                value={
-                  <span className="flex items-center gap-1">
-                    <Phone className="w-3 h-3" />
-                    {student.guardianPhone}
-                  </span>
-                }
-              />
-            )}
+            <ProfileRow
+              label="Mother"
+              value={
+                <span className="flex items-center gap-1">
+                  <Phone className="w-3 h-3" />
+                  {student.motherName} · {student.motherMobile}
+                </span>
+              }
+            />
             {student.guardianAadhar && (
               <ProfileRow label="Aadhar" value={student.guardianAadhar} />
             )}
@@ -645,10 +645,7 @@ function StudentProfileModal({
 function ProfileRow({
   label,
   value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+}: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 text-sm">
       <span className="text-muted-foreground flex-shrink-0">{label}</span>
@@ -753,7 +750,7 @@ function AssignBatchDialog({
   );
 }
 
-// ─── Students Page ────────────────────────────────────────────────────────────
+// ─── Students Page ────────────────────────────────────────────────────────────────
 
 export default function StudentsPage() {
   const [search, setSearch] = useState("");
@@ -773,18 +770,22 @@ export default function StudentsPage() {
   const reactivateMutation = useReactivateStudent();
   const { getPhotoUrl } = useStudentPhotos();
 
+  const searchLower = search.toLowerCase();
+
   const inactiveStudents = students.filter(
     (s) =>
       !s.isActive &&
-      (s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.guardianName.toLowerCase().includes(search.toLowerCase())),
+      (s.name.toLowerCase().includes(searchLower) ||
+        s.fatherName.toLowerCase().includes(searchLower) ||
+        s.motherName.toLowerCase().includes(searchLower)),
   );
 
   const filteredStudents = students.filter(
     (s) =>
       s.isActive &&
-      (s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.guardianName.toLowerCase().includes(search.toLowerCase())),
+      (s.name.toLowerCase().includes(searchLower) ||
+        s.fatherName.toLowerCase().includes(searchLower) ||
+        s.motherName.toLowerCase().includes(searchLower)),
   );
 
   const getBatchName = (batchId?: bigint) => {
@@ -818,7 +819,6 @@ export default function StudentsPage() {
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">
@@ -833,18 +833,16 @@ export default function StudentsPage() {
           onClick={() => setFormOpen(true)}
           className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
         >
-          <Plus className="w-4 h-4" />
-          Add Student
+          <Plus className="w-4 h-4" /> Add Student
         </Button>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search students by name or guardian..."
+          placeholder="Search students by name or parent..."
           className="pl-9 bg-card border-border"
         />
         {search && (
@@ -858,7 +856,6 @@ export default function StudentsPage() {
         )}
       </div>
 
-      {/* Table */}
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -888,14 +885,11 @@ export default function StudentsPage() {
                 className="bg-card border border-border rounded-lg p-4 hover:border-primary/30 transition-all duration-200"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  {/* Avatar + student info */}
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <button
                       type="button"
                       onClick={() => setProfileStudent(student)}
                       className="flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
-                      title="View profile"
-                      aria-label={`View profile of ${student.name}`}
                     >
                       <Avatar className="w-10 h-10 border border-primary/20">
                         {photoUrl ? (
@@ -919,13 +913,12 @@ export default function StudentsPage() {
                         {student.name}
                       </button>
                       <p className="text-muted-foreground text-xs truncate">
-                        {student.guardianName} ({student.guardianRelationship})
-                        · {student.guardianPhone}
+                        F: {student.fatherName} {student.fatherMobile} | M:{" "}
+                        {student.motherName} {student.motherMobile}
                       </p>
                     </div>
                   </div>
 
-                  {/* Meta */}
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:flex-nowrap">
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                       Adm: {student.dateOfAdmission}
@@ -947,14 +940,12 @@ export default function StudentsPage() {
                     )}
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-1.5">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setProfileStudent(student)}
                       className="text-muted-foreground hover:text-primary h-8 w-8 p-0"
-                      title="View Profile"
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </Button>
@@ -963,7 +954,6 @@ export default function StudentsPage() {
                       size="sm"
                       onClick={() => setDueCardStudent(student)}
                       className="text-muted-foreground hover:text-foreground h-8 px-2 text-xs gap-1"
-                      title="View Due Card"
                     >
                       <ClipboardList className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Due Card</span>
@@ -973,7 +963,6 @@ export default function StudentsPage() {
                       size="sm"
                       onClick={() => setAssignStudent(student)}
                       className="border-primary/50 text-primary hover:bg-primary/10 hover:border-primary h-8 px-2.5 text-xs gap-1.5 transition-all"
-                      title="Assign or Change Batch"
                       data-ocid="student.assign.open_modal_button"
                     >
                       <Users className="w-3.5 h-3.5" />
@@ -996,7 +985,6 @@ export default function StudentsPage() {
                         size="sm"
                         onClick={() => setInactiveStudentState(student)}
                         className="text-muted-foreground hover:text-warning h-8 w-8 p-0"
-                        title="Mark Inactive"
                       >
                         <UserMinus className="w-3.5 h-3.5" />
                       </Button>
@@ -1009,7 +997,6 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* Inactive Students Section */}
       {inactiveStudents.length > 0 && (
         <div className="space-y-3">
           <h2 className="font-display text-lg font-semibold text-muted-foreground border-t border-border pt-4">
@@ -1029,7 +1016,7 @@ export default function StudentsPage() {
                     {student.name}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {student.guardianName}
+                    {student.fatherName}
                   </p>
                 </div>
                 {isAdmin && (
@@ -1049,7 +1036,6 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* Add/Edit Form Dialog */}
       {(formOpen || editStudent) && (
         <StudentFormDialog
           open={formOpen || !!editStudent}
@@ -1061,7 +1047,6 @@ export default function StudentsPage() {
         />
       )}
 
-      {/* Assign Batch Dialog */}
       {assignStudent && (
         <AssignBatchDialog
           student={assignStudent}
@@ -1070,7 +1055,6 @@ export default function StudentsPage() {
         />
       )}
 
-      {/* Student Profile Modal */}
       {profileStudent && (
         <StudentProfileModal
           student={profileStudent}
@@ -1079,7 +1063,6 @@ export default function StudentsPage() {
         />
       )}
 
-      {/* Mark Inactive Confirmation */}
       <AlertDialog
         open={!!inactiveStudent}
         onOpenChange={(o) => !o && setInactiveStudentState(null)}
@@ -1112,7 +1095,6 @@ export default function StudentsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Due Card Modal */}
       {dueCardStudent && (
         <DueCardModal
           student={dueCardStudent}

@@ -13,16 +13,26 @@ export interface Student {
     dateOfBirth: string;
     admissionFees: bigint;
     name: string;
-    guardianRelationship: string;
+    motherName: string;
     isActive: boolean;
-    guardianPhone: string;
+    fatherName: string;
     gender: string;
     contactNumber: string;
+    motherMobile: string;
     guardianAadhar: string;
     currentBatchId?: bigint;
-    guardianName: string;
     studentAadhar: string;
+    fatherMobile: string;
     dateOfAdmission: string;
+}
+export interface AttendanceRecord {
+    id: bigint;
+    status: AttendanceStatus;
+    studentId: bigint;
+    date: string;
+    submittedBy: string;
+    isLocked: boolean;
+    batchId: bigint;
 }
 export interface FeeAssignmentPayment {
     studentId: bigint;
@@ -109,6 +119,11 @@ export interface DueCard {
 export interface UserProfile {
     name: string;
 }
+export enum AttendanceStatus {
+    present = "present",
+    absent = "absent",
+    holiday = "holiday"
+}
 export enum FeeAssignmentType {
     other = "other",
     annualDay = "annualDay",
@@ -126,7 +141,7 @@ export interface backendInterface {
     createBatch(name: string, daysOfWeek: Array<bigint>, startTime: string, endTime: string, monthlyFees: bigint): Promise<bigint>;
     createFeeAssignment(name: string, feeType: FeeAssignmentType, amount: bigint, year: bigint, studentIds: Array<bigint>, description: string): Promise<bigint>;
     createSoloProgramme(name: string, description: string, startDate: string, endDate: string, scheduleTime: string, scheduleDays: Array<bigint>): Promise<bigint>;
-    createStudent(name: string, dateOfAdmission: string, dateOfBirth: string, age: bigint, gender: string, contactNumber: string, studentAadhar: string, guardianName: string, guardianRelationship: string, guardianPhone: string, guardianAadhar: string, admissionFees: bigint): Promise<bigint>;
+    createStudent(name: string, dateOfAdmission: string, dateOfBirth: string, age: bigint, gender: string, contactNumber: string, studentAadhar: string, fatherName: string, fatherMobile: string, motherName: string, motherMobile: string, guardianAadhar: string, admissionFees: bigint): Promise<bigint>;
     deactivateAppUser(userId: bigint): Promise<void>;
     deleteBatch(id: bigint): Promise<void>;
     generateDueCard(studentId: bigint, year: bigint): Promise<void>;
@@ -138,9 +153,14 @@ export interface backendInterface {
     getAllSoloProgrammes(): Promise<Array<SoloProgramme>>;
     getAllSoloRegistrations(): Promise<Array<SoloRegistration>>;
     getAllStudents(): Promise<Array<Student>>;
+    getAttendanceForBatch(batchId: bigint, date: string): Promise<Array<AttendanceRecord>>;
+    getAttendanceForStudent(studentId: bigint): Promise<Array<AttendanceRecord>>;
     getBatch(id: bigint): Promise<Batch | null>;
     getBatchesByDay(day: bigint): Promise<Array<Batch>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
+    /**
+     * / Copied types from original actor
+     */
     getCallerUserRole(): Promise<UserRole>;
     getCurrentYear(): Promise<bigint>;
     getDueCard(studentId: bigint, year: bigint): Promise<DueCard | null>;
@@ -155,20 +175,26 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getYearChangeoverRecord(studentId: bigint, year: bigint): Promise<YearChangeoverRecord | null>;
     guestLogin(name: string, mobileNumber: string): Promise<AppUser>;
+    isAttendanceSubmitted(batchId: bigint, date: string): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     loginUser(mobileNumber: string, password: string): Promise<AppUser | null>;
     markFeeAssignmentPaymentPaid(assignmentId: bigint, studentId: bigint, paidDate: string): Promise<void>;
+    markHoliday(batchId: bigint, date: string, submittedBy: string): Promise<void>;
     markSoloComplete(studentId: bigint, programmeId: bigint): Promise<void>;
     markSoloPaid(studentId: bigint, programmeId: bigint): Promise<void>;
     markStudentInactive(id: bigint): Promise<void>;
+    modifyAttendance(batchId: bigint, date: string, presentStudentIds: Array<bigint>, modifiedBy: string): Promise<void>;
     performYearChangeover(toYear: bigint): Promise<void>;
+    reactivateStudent(id: bigint): Promise<void>;
     recordFeePayment(studentId: bigint, date: string, feeType: string, amount: bigint, remarks: string, month: bigint | null, year: bigint | null, paymentMode: string): Promise<bigint>;
     regenerateDueCardFromMonth(studentId: bigint, year: bigint, fromMonth: bigint): Promise<void>;
     registerStudentForSolo(studentId: bigint, programmeId: bigint, feeAmount: bigint): Promise<void>;
+    resetAllData(): Promise<void>;
     resetUserPassword(userId: bigint, newPassword: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     seedDefaultUsers(): Promise<void>;
+    submitAttendance(batchId: bigint, date: string, presentStudentIds: Array<bigint>, submittedBy: string): Promise<bigint>;
     updateBatch(id: bigint, name: string, daysOfWeek: Array<bigint>, startTime: string, endTime: string, monthlyFees: bigint): Promise<void>;
     updateCurrentYear(year: bigint): Promise<void>;
-    updateStudent(id: bigint, name: string, dateOfBirth: string, age: bigint, gender: string, contactNumber: string, studentAadhar: string, guardianName: string, guardianRelationship: string, guardianPhone: string, guardianAadhar: string): Promise<void>;
+    updateStudent(id: bigint, name: string, dateOfBirth: string, age: bigint, gender: string, contactNumber: string, studentAadhar: string, fatherName: string, fatherMobile: string, motherName: string, motherMobile: string, guardianAadhar: string): Promise<void>;
 }

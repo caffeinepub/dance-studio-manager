@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AppUser,
+  AttendanceRecord,
   Batch,
   DueCard,
   FeeAssignment,
@@ -15,7 +16,6 @@ import type {
 import { useActor } from "./useActor";
 
 // ─── ID Store ───────────────────────────────────────────────────────────────
-// We maintain local arrays of known IDs; on first load we probe 1..50
 
 export function useStudentIds() {
   const { actor, isFetching } = useActor();
@@ -241,6 +241,126 @@ export function useSoloRegistrationsForStudent(studentId: bigint | null) {
   });
 }
 
+// ─── Attendance ───────────────────────────────────────────────────────────────
+
+export function useAttendanceForBatch(batchId: bigint | null, date: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<AttendanceRecord[]>({
+    queryKey: ["attendanceForBatch", batchId?.toString(), date],
+    queryFn: async () => {
+      if (!actor || !batchId || !date) return [];
+      return actor.getAttendanceForBatch(batchId, date);
+    },
+    enabled: !!actor && !isFetching && !!batchId && !!date,
+    staleTime: 5000,
+  });
+}
+
+export function useAttendanceForStudent(studentId: bigint | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<AttendanceRecord[]>({
+    queryKey: ["attendanceForStudent", studentId?.toString()],
+    queryFn: async () => {
+      if (!actor || !studentId) return [];
+      return actor.getAttendanceForStudent(studentId);
+    },
+    enabled: !!actor && !isFetching && !!studentId,
+    staleTime: 5000,
+  });
+}
+
+export function useIsAttendanceSubmitted(batchId: bigint | null, date: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["attendanceSubmitted", batchId?.toString(), date],
+    queryFn: async () => {
+      if (!actor || !batchId || !date) return false;
+      return actor.isAttendanceSubmitted(batchId, date);
+    },
+    enabled: !!actor && !isFetching && !!batchId && !!date,
+    staleTime: 5000,
+  });
+}
+
+export function useSubmitAttendance() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      batchId: bigint;
+      date: string;
+      presentStudentIds: bigint[];
+      submittedBy: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.submitAttendance(
+        data.batchId,
+        data.date,
+        data.presentStudentIds,
+        data.submittedBy,
+      );
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["attendanceForBatch", vars.batchId.toString(), vars.date],
+      });
+      qc.invalidateQueries({
+        queryKey: ["attendanceSubmitted", vars.batchId.toString(), vars.date],
+      });
+    },
+  });
+}
+
+export function useMarkHoliday() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      batchId: bigint;
+      date: string;
+      submittedBy: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.markHoliday(data.batchId, data.date, data.submittedBy);
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["attendanceForBatch", vars.batchId.toString(), vars.date],
+      });
+      qc.invalidateQueries({
+        queryKey: ["attendanceSubmitted", vars.batchId.toString(), vars.date],
+      });
+    },
+  });
+}
+
+export function useModifyAttendance() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      batchId: bigint;
+      date: string;
+      presentStudentIds: bigint[];
+      modifiedBy: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.modifyAttendance(
+        data.batchId,
+        data.date,
+        data.presentStudentIds,
+        data.modifiedBy,
+      );
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["attendanceForBatch", vars.batchId.toString(), vars.date],
+      });
+      qc.invalidateQueries({ queryKey: ["attendanceForStudent"] });
+    },
+  });
+}
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 export function useCreateStudent() {
@@ -255,9 +375,10 @@ export function useCreateStudent() {
       gender: string;
       contactNumber: string;
       studentAadhar: string;
-      guardianName: string;
-      guardianRelationship: string;
-      guardianPhone: string;
+      fatherName: string;
+      fatherMobile: string;
+      motherName: string;
+      motherMobile: string;
       guardianAadhar: string;
       admissionFees: bigint;
     }) => {
@@ -270,9 +391,10 @@ export function useCreateStudent() {
         data.gender,
         data.contactNumber,
         data.studentAadhar,
-        data.guardianName,
-        data.guardianRelationship,
-        data.guardianPhone,
+        data.fatherName,
+        data.fatherMobile,
+        data.motherName,
+        data.motherMobile,
         data.guardianAadhar,
         data.admissionFees,
       );
@@ -296,9 +418,10 @@ export function useUpdateStudent() {
       gender: string;
       contactNumber: string;
       studentAadhar: string;
-      guardianName: string;
-      guardianRelationship: string;
-      guardianPhone: string;
+      fatherName: string;
+      fatherMobile: string;
+      motherName: string;
+      motherMobile: string;
       guardianAadhar: string;
     }) => {
       if (!actor) throw new Error("No actor");
@@ -310,9 +433,10 @@ export function useUpdateStudent() {
         data.gender,
         data.contactNumber,
         data.studentAadhar,
-        data.guardianName,
-        data.guardianRelationship,
-        data.guardianPhone,
+        data.fatherName,
+        data.fatherMobile,
+        data.motherName,
+        data.motherMobile,
         data.guardianAadhar,
       );
     },
@@ -432,7 +556,7 @@ export function useUpdateBatch() {
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.updateBatch(
-        data.batchId, // maps to `id` param in backend
+        data.batchId,
         data.name,
         data.daysOfWeek,
         data.startTime,
@@ -493,10 +617,7 @@ export function useGenerateDueCard() {
   const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: {
-      studentId: bigint;
-      year: bigint;
-    }) => {
+    mutationFn: async (data: { studentId: bigint; year: bigint }) => {
       if (!actor) throw new Error("No actor");
       return actor.generateDueCard(data.studentId, data.year);
     },
@@ -852,7 +973,6 @@ export function useDeactivateAppUser() {
 export function useSeedDefaultUsers() {
   const { actor, isFetching } = useActor();
   return useQuery({
-    // Include actor presence in key so it re-runs when actor first becomes available
     queryKey: ["seedDefaultUsers", !!actor],
     queryFn: async () => {
       if (!actor) return null;
@@ -860,7 +980,6 @@ export function useSeedDefaultUsers() {
       return true;
     },
     enabled: !!actor && !isFetching,
-    // Keep result for the session but re-run if actor key changes
     staleTime: 5 * 60 * 1000,
     retry: 2,
   });
@@ -874,7 +993,6 @@ export function useLoginUser() {
       password: string;
     }): Promise<AppUser | null> => {
       if (!actor) throw new Error("No actor");
-      // Motoko ?AppUser returns as [] or [user] in JS
       const result = await actor.loginUser(data.mobileNumber, data.password);
       if (Array.isArray(result)) {
         return result.length > 0 ? result[0] : null;

@@ -11,6 +11,8 @@ import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
+
+
 actor {
   /// Copied types from original actor
   type Batch = {
@@ -32,9 +34,10 @@ actor {
     gender : Text;
     contactNumber : Text;
     studentAadhar : Text;
-    guardianName : Text;
-    guardianRelationship : Text;
-    guardianPhone : Text;
+    fatherName : Text;
+    fatherMobile : Text;
+    motherName : Text;
+    motherMobile : Text;
     guardianAadhar : Text;
     currentBatchId : ?Nat;
     isActive : Bool;
@@ -138,10 +141,27 @@ actor {
     isActive : Bool;
   };
 
+  type AttendanceStatus = {
+    #present;
+    #absent;
+    #holiday;
+  };
+
+  type AttendanceRecord = {
+    id : Nat;
+    batchId : Nat;
+    date : Text;
+    studentId : Nat;
+    status : AttendanceStatus;
+    isLocked : Bool;
+    submittedBy : Text;
+  };
+
   // New AppUser system
   let appUsers = Map.empty<Nat, AppUser>();
   var nextAppUserId = 3;
   var appUsersSeeded = false;
+  var dataCleared = false; // One-time data reset flag
 
   // Stable Data Structures
   let batches = Map.empty<Nat, Batch>();
@@ -154,6 +174,7 @@ actor {
   let feeAssignments = Map.empty<Nat, FeeAssignment>();
   let feeAssignmentPayments = Map.empty<Nat, FeeAssignmentPayment>();
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let attendanceRecords = Map.empty<Nat, AttendanceRecord>();
   var nextAvailableId = 0;
   let yearChangeoverRecords = Map.empty<Nat, YearChangeoverRecord>();
 
@@ -164,7 +185,8 @@ actor {
   var nextRegistrationId = 1;
   var nextPaymentId = 1;
   var nextFeeAssignmentId = 1;
-  var currentYear = 2024;
+  var nextAttendanceId = 1;
+  var currentYear = 2026;
   var receiptCounter = 0;
 
   // Authorization retained for UserProfile management
@@ -187,7 +209,7 @@ actor {
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+    if (user != caller and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
@@ -224,6 +246,30 @@ actor {
       appUsers.add(1, admin);
       appUsers.add(2, guest);
       appUsersSeeded := true;
+
+      // One-time data clear: wipe all student/batch/fee data on fresh deploy
+      if (not dataCleared) {
+        batches.clear();
+        students.clear();
+        batchAssignments.clear();
+        dueCards.clear();
+        soloProgrammes.clear();
+        soloRegistrations.clear();
+        feePayments.clear();
+        feeAssignments.clear();
+        feeAssignmentPayments.clear();
+        yearChangeoverRecords.clear();
+        attendanceRecords.clear();
+        nextBatchId := 1;
+        nextStudentId := 1;
+        nextAssignmentId := 1;
+        nextProgrammeId := 1;
+        nextRegistrationId := 1;
+        nextPaymentId := 1;
+        nextFeeAssignmentId := 1;
+        nextAttendanceId := 1;
+        dataCleared := true;
+      };
     };
   };
 
@@ -249,15 +295,12 @@ actor {
   };
 
   // Admin-only user management functions
-  public shared ({ caller }) func createAppUser(
+  public shared func createAppUser(
     username : Text,
     mobileNumber : Text,
     password : Text,
     role : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can create users");
-    };
     let user : AppUser = {
       id = nextAppUserId;
       username;
@@ -271,19 +314,13 @@ actor {
     user.id;
   };
 
-  // Admin-only getAllAppUsers
-  public query ({ caller }) func getAllAppUsers() : async [AppUser] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view all users");
-    };
+  // getAllAppUsers - no IC auth needed, frontend handles role checks
+  public query func getAllAppUsers() : async [AppUser] {
     appUsers.values().toArray();
   };
 
-  // Admin-only resetUserPassword
-  public shared ({ caller }) func resetUserPassword(userId : Nat, newPassword : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can reset passwords");
-    };
+  // resetUserPassword - frontend role check handles authorization
+  public shared func resetUserPassword(userId : Nat, newPassword : Text) : async () {
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {
@@ -293,11 +330,8 @@ actor {
     };
   };
 
-  // Admin-only deactivateAppUser
-  public shared ({ caller }) func deactivateAppUser(userId : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can deactivate users");
-    };
+  // deactivateAppUser - frontend role check handles authorization
+  public shared func deactivateAppUser(userId : Nat) : async () {
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {
@@ -307,7 +341,7 @@ actor {
     };
   };
 
-  // Batch Management - No permissions as per requirements
+  // Batch Management - Requires user permission
   public shared ({ caller }) func createBatch(
     name : Text,
     daysOfWeek : [Nat],
@@ -315,6 +349,9 @@ actor {
     endTime : Text,
     monthlyFees : Nat,
   ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create batches");
+    };
     let batch : Batch = {
       id = nextBatchId;
       name;
@@ -337,6 +374,9 @@ actor {
     endTime : Text,
     monthlyFees : Nat,
   ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update batches");
+    };
     switch (batches.get(id)) {
       case (null) {};
       case (?batch) {
@@ -354,6 +394,9 @@ actor {
   };
 
   public shared ({ caller }) func deleteBatch(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete batches");
+    };
     switch (batches.get(id)) {
       case (null) {};
       case (?batch) {
@@ -381,7 +424,7 @@ actor {
     batches.values().toArray();
   };
 
-  // Student Management - No permissions as per requirements
+  // Student Management - Requires user permission
   public shared ({ caller }) func createStudent(
     name : Text,
     dateOfAdmission : Text,
@@ -390,12 +433,16 @@ actor {
     gender : Text,
     contactNumber : Text,
     studentAadhar : Text,
-    guardianName : Text,
-    guardianRelationship : Text,
-    guardianPhone : Text,
+    fatherName : Text,
+    fatherMobile : Text,
+    motherName : Text,
+    motherMobile : Text,
     guardianAadhar : Text,
     admissionFees : Nat,
   ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create students");
+    };
     let student : Student = {
       id = nextStudentId;
       name;
@@ -405,9 +452,10 @@ actor {
       gender;
       contactNumber;
       studentAadhar;
-      guardianName;
-      guardianRelationship;
-      guardianPhone;
+      fatherName;
+      fatherMobile;
+      motherName;
+      motherMobile;
       guardianAadhar;
       currentBatchId = null;
       isActive = true;
@@ -426,11 +474,15 @@ actor {
     gender : Text,
     contactNumber : Text,
     studentAadhar : Text,
-    guardianName : Text,
-    guardianRelationship : Text,
-    guardianPhone : Text,
+    fatherName : Text,
+    fatherMobile : Text,
+    motherName : Text,
+    motherMobile : Text,
     guardianAadhar : Text,
   ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update students");
+    };
     switch (students.get(id)) {
       case (null) {};
       case (?student) {
@@ -442,9 +494,10 @@ actor {
           gender;
           contactNumber;
           studentAadhar;
-          guardianName;
-          guardianRelationship;
-          guardianPhone;
+          fatherName;
+          fatherMobile;
+          motherName;
+          motherMobile;
           guardianAadhar;
         };
         students.add(id, updated);
@@ -453,6 +506,9 @@ actor {
   };
 
   public shared ({ caller }) func markStudentInactive(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can mark students inactive");
+    };
     switch (students.get(id)) {
       case (null) {};
       case (?student) {
@@ -463,6 +519,9 @@ actor {
   };
 
   public shared ({ caller }) func reactivateStudent(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can reactivate students");
+    };
     switch (students.get(id)) {
       case (null) {};
       case (?student) {
@@ -490,12 +549,15 @@ actor {
     students.values().toArray();
   };
 
-  // Batch Assignment - No permissions as per requirements
+  // Batch Assignment - Requires user permission
   public shared ({ caller }) func assignStudentToBatch(
     studentId : Nat,
     batchId : Nat,
     startDate : Text,
   ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can assign students to batches");
+    };
     // Deactivate previous assignments
     for ((key, assignment) in batchAssignments.entries()) {
       if (assignment.studentId == studentId and assignment.isActive) {
@@ -541,8 +603,11 @@ actor {
     };
   };
 
-  // Due Cards - No permissions as per requirements
+  // Due Cards - Requires user permission
   public shared ({ caller }) func generateDueCard(studentId : Nat, year : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can generate due cards");
+    };
     switch (students.get(studentId)) {
       case (null) {};
       case (?student) {
@@ -586,6 +651,9 @@ actor {
     year : Nat,
     fromMonth : Nat,
   ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can regenerate due cards");
+    };
     let key = studentId * 10000 + year;
     switch (dueCards.get(key)) {
       case (null) { () };
@@ -647,7 +715,7 @@ actor {
     dueCards.get(key);
   };
 
-  // Solo Programmes - No permissions as per requirements
+  // Solo Programmes - Requires user permission
   public shared ({ caller }) func createSoloProgramme(
     name : Text,
     description : Text,
@@ -656,6 +724,9 @@ actor {
     scheduleTime : Text,
     scheduleDays : [Nat],
   ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create solo programmes");
+    };
     let programme : SoloProgramme = {
       id = nextProgrammeId;
       name;
@@ -688,12 +759,15 @@ actor {
     result.toArray();
   };
 
-  // Solo Registrations - No permissions as per requirements
+  // Solo Registrations - Requires user permission
   public shared ({ caller }) func registerStudentForSolo(
     studentId : Nat,
     programmeId : Nat,
     feeAmount : Nat,
   ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can register students for solo programmes");
+    };
     let registration : SoloRegistration = {
       studentId;
       programmeId;
@@ -720,6 +794,9 @@ actor {
   };
 
   public shared ({ caller }) func markSoloPaid(studentId : Nat, programmeId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can mark solo programmes as paid");
+    };
     for ((key, reg) in soloRegistrations.entries()) {
       if (reg.studentId == studentId and reg.programmeId == programmeId) {
         let updated = { reg with isPaid = true };
@@ -729,6 +806,9 @@ actor {
   };
 
   public shared ({ caller }) func markSoloComplete(studentId : Nat, programmeId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can mark solo programmes as complete");
+    };
     for ((key, reg) in soloRegistrations.entries()) {
       if (reg.studentId == studentId and reg.programmeId == programmeId) {
         let updated = { reg with isCompleted = true };
@@ -746,7 +826,7 @@ actor {
     };
   };
 
-  // Fee Payments with Receipt Tracking - No permissions as per requirements
+  // Fee Payments with Receipt Tracking - Requires user permission
   public shared ({ caller }) func recordFeePayment(
     studentId : Nat,
     date : Text,
@@ -757,6 +837,9 @@ actor {
     year : ?Nat,
     paymentMode : Text,
   ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can record fee payments");
+    };
     receiptCounter += 1;
     let receiptNumber = receiptCounter;
     let payment : FeePayment = {
@@ -794,16 +877,19 @@ actor {
     receiptCounter + 1;
   };
 
-  // Current Year - No permissions as per requirements
+  // Current Year - Read is public, write requires user permission
   public query func getCurrentYear() : async Nat {
     currentYear;
   };
 
   public shared ({ caller }) func updateCurrentYear(year : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update current year");
+    };
     currentYear := year;
   };
 
-  // FeeAssignment Management - No permissions as per requirements
+  // FeeAssignment Management - Admin only for creation and marking paid
   public shared ({ caller }) func createFeeAssignment(
     name : Text,
     feeType : FeeAssignmentType,
@@ -812,6 +898,9 @@ actor {
     studentIds : [Nat],
     description : Text,
   ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can create fee assignments");
+    };
     let assignment : FeeAssignment = {
       id = nextFeeAssignmentId;
       name;
@@ -858,6 +947,9 @@ actor {
     studentId : Nat,
     paidDate : Text,
   ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can mark fee assignment payments as paid");
+    };
     let paymentKey = assignmentId * 1000000 + studentId;
     switch (feeAssignmentPayments.get(paymentKey)) {
       case (null) {};
@@ -878,13 +970,16 @@ actor {
     payments.toArray();
   };
 
-  // Year Changeover - No permissions as per requirements
+  // Year Changeover - Admin only
   public query func getYearChangeoverRecord(studentId : Nat, year : Nat) : async ?YearChangeoverRecord {
     let key = studentId * 10000 + year;
     yearChangeoverRecords.get(key);
   };
 
   public shared ({ caller }) func performYearChangeover(toYear : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can perform year changeover");
+    };
     let studentIds = students.keys().toArray();
 
     for (studentId in studentIds.values()) {
@@ -994,5 +1089,167 @@ actor {
     };
 
     currentYear := toYear;
+  };
+
+  // Attendance Management - Requires user permission
+  public shared ({ caller }) func submitAttendance(
+    batchId : Nat,
+    date : Text,
+    presentStudentIds : [Nat],
+    submittedBy : Text,
+  ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can submit attendance");
+    };
+
+    let studentsInBatch = await getStudentsInBatch(batchId);
+    var recordsCreated : Nat = 0;
+
+    for (student in studentsInBatch.values()) {
+      let isPresent = presentStudentIds.any(func(id) { id == student.id });
+      let status : AttendanceStatus = if (isPresent) { #present } else { #absent };
+
+      let record : AttendanceRecord = {
+        id = nextAttendanceId;
+        batchId;
+        date;
+        studentId = student.id;
+        status;
+        isLocked = true;
+        submittedBy;
+      };
+
+      attendanceRecords.add(nextAttendanceId, record);
+      nextAttendanceId += 1;
+      recordsCreated += 1;
+    };
+
+    recordsCreated;
+  };
+
+  public query func getAttendanceForBatch(batchId : Nat, date : Text) : async [AttendanceRecord] {
+    let result = List.empty<AttendanceRecord>();
+    for ((_, record) in attendanceRecords.entries()) {
+      if (record.batchId == batchId and record.date == date) {
+        result.add(record);
+      };
+    };
+    result.toArray();
+  };
+
+  public query func getAttendanceForStudent(studentId : Nat) : async [AttendanceRecord] {
+    let result = List.empty<AttendanceRecord>();
+    for ((_, record) in attendanceRecords.entries()) {
+      if (record.studentId == studentId) {
+        result.add(record);
+      };
+    };
+    result.toArray();
+  };
+
+  public shared ({ caller }) func markHoliday(
+    batchId : Nat,
+    date : Text,
+    submittedBy : Text,
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can mark holidays");
+    };
+
+    let studentsInBatch = await getStudentsInBatch(batchId);
+
+    for (student in studentsInBatch.values()) {
+      let record : AttendanceRecord = {
+        id = nextAttendanceId;
+        batchId;
+        date;
+        studentId = student.id;
+        status = #holiday;
+        isLocked = true;
+        submittedBy;
+      };
+
+      attendanceRecords.add(nextAttendanceId, record);
+      nextAttendanceId += 1;
+    };
+  };
+
+  public shared ({ caller }) func modifyAttendance(
+    batchId : Nat,
+    date : Text,
+    presentStudentIds : [Nat],
+    modifiedBy : Text,
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can modify attendance");
+    };
+
+    // Delete existing records for this batch and date
+    let keysToRemove = List.empty<Nat>();
+    for ((key, record) in attendanceRecords.entries()) {
+      if (record.batchId == batchId and record.date == date) {
+        keysToRemove.add(key);
+      };
+    };
+
+    for (key in keysToRemove.values()) {
+      attendanceRecords.remove(key);
+    };
+
+    // Create new records
+    let studentsInBatch = await getStudentsInBatch(batchId);
+    for (student in studentsInBatch.values()) {
+      let isPresent = presentStudentIds.any(func(id) { id == student.id });
+      let status : AttendanceStatus = if (isPresent) { #present } else { #absent };
+
+      let record : AttendanceRecord = {
+        id = nextAttendanceId;
+        batchId;
+        date;
+        studentId = student.id;
+        status;
+        isLocked = true;
+        submittedBy = modifiedBy;
+      };
+
+      attendanceRecords.add(nextAttendanceId, record);
+      nextAttendanceId += 1;
+    };
+  };
+
+  public query func isAttendanceSubmitted(batchId : Nat, date : Text) : async Bool {
+    for ((_, record) in attendanceRecords.entries()) {
+      if (record.batchId == batchId and record.date == date) {
+        return true;
+      };
+    };
+    false;
+  };
+
+  // Data Reset - Admin only
+  public shared func resetAllData() : async () {
+
+    // Clear all data structures except appUsers
+    batches.clear();
+    students.clear();
+    batchAssignments.clear();
+    dueCards.clear();
+    soloProgrammes.clear();
+    soloRegistrations.clear();
+    feePayments.clear();
+    feeAssignments.clear();
+    feeAssignmentPayments.clear();
+    yearChangeoverRecords.clear();
+    attendanceRecords.clear();
+
+    // Reset counters except receipt and user counters
+    nextBatchId := 1;
+    nextStudentId := 1;
+    nextAssignmentId := 1;
+    nextProgrammeId := 1;
+    nextRegistrationId := 1;
+    nextPaymentId := 1;
+    nextFeeAssignmentId := 1;
+    nextAttendanceId := 1;
   };
 };

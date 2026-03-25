@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import {
   BarChart2,
   CalendarRange,
+  CheckSquare,
   ClipboardList,
   LayoutDashboard,
   LogOut,
@@ -27,7 +28,7 @@ interface NavItem {
   id: Page;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles: string[]; // which roles can see this
+  roles: string[];
 }
 
 const navItems: NavItem[] = [
@@ -48,6 +49,12 @@ const navItems: NavItem[] = [
     label: "Batches",
     icon: Music,
     roles: ["admin", "staff", "user"],
+  },
+  {
+    id: "attendance",
+    label: "Attendance",
+    icon: CheckSquare,
+    roles: ["admin", "staff"],
   },
   {
     id: "solo",
@@ -139,10 +146,8 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         </div>
       </div>
 
-      {/* Diagonal pattern accent */}
       <div className="h-1 w-full sidebar-pattern opacity-40" />
 
-      {/* Nav Items */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {visibleItems.map(({ id, label, icon: Icon }) => {
           const isActive = currentPage === id;
@@ -176,10 +181,8 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         })}
       </nav>
 
-      {/* User info + Logout */}
       {currentUser && (
         <div className="px-3 py-3 border-t border-sidebar-border space-y-2">
-          {/* User info */}
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-sidebar-accent/40">
             <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
               <Shield className="w-3.5 h-3.5 text-primary" />
@@ -196,7 +199,6 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             </div>
           </div>
 
-          {/* Logout button */}
           <button
             type="button"
             onClick={() => {
@@ -209,7 +211,6 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             Sign Out
           </button>
 
-          {/* Footer */}
           <p className="text-sidebar-foreground/25 text-[10px] text-center pt-1">
             © {new Date().getFullYear()}.{" "}
             <a
@@ -228,7 +229,6 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile toggle */}
       <button
         type="button"
         onClick={() => setMobileOpen(!mobileOpen)}
@@ -237,7 +237,6 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div
           role="button"
@@ -248,12 +247,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         />
       )}
 
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-60 bg-sidebar border-r border-sidebar-border flex-shrink-0">
         <NavContent />
       </aside>
 
-      {/* Mobile sidebar */}
       <aside
         className={cn(
           "lg:hidden flex flex-col fixed left-0 top-0 bottom-0 w-64 bg-sidebar border-r border-sidebar-border z-50 transition-transform duration-300",

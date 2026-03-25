@@ -94,16 +94,31 @@ export const Student = IDL.Record({
   'dateOfBirth' : IDL.Text,
   'admissionFees' : IDL.Nat,
   'name' : IDL.Text,
-  'guardianRelationship' : IDL.Text,
+  'motherName' : IDL.Text,
   'isActive' : IDL.Bool,
-  'guardianPhone' : IDL.Text,
+  'fatherName' : IDL.Text,
   'gender' : IDL.Text,
   'contactNumber' : IDL.Text,
+  'motherMobile' : IDL.Text,
   'guardianAadhar' : IDL.Text,
   'currentBatchId' : IDL.Opt(IDL.Nat),
-  'guardianName' : IDL.Text,
   'studentAadhar' : IDL.Text,
+  'fatherMobile' : IDL.Text,
   'dateOfAdmission' : IDL.Text,
+});
+export const AttendanceStatus = IDL.Variant({
+  'present' : IDL.Null,
+  'absent' : IDL.Null,
+  'holiday' : IDL.Null,
+});
+export const AttendanceRecord = IDL.Record({
+  'id' : IDL.Nat,
+  'status' : AttendanceStatus,
+  'studentId' : IDL.Nat,
+  'date' : IDL.Text,
+  'submittedBy' : IDL.Text,
+  'isLocked' : IDL.Bool,
+  'batchId' : IDL.Nat,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const MonthlyEntry = IDL.Record({
@@ -200,6 +215,7 @@ export const idlService = IDL.Service({
         IDL.Text,
         IDL.Text,
         IDL.Text,
+        IDL.Text,
         IDL.Nat,
       ],
       [IDL.Nat],
@@ -224,6 +240,16 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getAllStudents' : IDL.Func([], [IDL.Vec(Student)], ['query']),
+  'getAttendanceForBatch' : IDL.Func(
+      [IDL.Nat, IDL.Text],
+      [IDL.Vec(AttendanceRecord)],
+      ['query'],
+    ),
+  'getAttendanceForStudent' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(AttendanceRecord)],
+      ['query'],
+    ),
   'getBatch' : IDL.Func([IDL.Nat], [IDL.Opt(Batch)], ['query']),
   'getBatchesByDay' : IDL.Func([IDL.Nat], [IDL.Vec(Batch)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -265,6 +291,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'guestLogin' : IDL.Func([IDL.Text, IDL.Text], [AppUser], ['query']),
+  'isAttendanceSubmitted' : IDL.Func(
+      [IDL.Nat, IDL.Text],
+      [IDL.Bool],
+      ['query'],
+    ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'loginUser' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AppUser)], ['query']),
   'markFeeAssignmentPaymentPaid' : IDL.Func(
@@ -272,11 +303,17 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
+  'markHoliday' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [], []),
   'markSoloComplete' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'markSoloPaid' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'markStudentInactive' : IDL.Func([IDL.Nat], [], []),
-  'reactivateStudent' : IDL.Func([IDL.Nat], [], []),
+  'modifyAttendance' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Vec(IDL.Nat), IDL.Text],
+      [],
+      [],
+    ),
   'performYearChangeover' : IDL.Func([IDL.Nat], [], []),
+  'reactivateStudent' : IDL.Func([IDL.Nat], [], []),
   'recordFeePayment' : IDL.Func(
       [
         IDL.Nat,
@@ -293,9 +330,15 @@ export const idlService = IDL.Service({
     ),
   'regenerateDueCardFromMonth' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [], []),
   'registerStudentForSolo' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [], []),
+  'resetAllData' : IDL.Func([], [], []),
   'resetUserPassword' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'seedDefaultUsers' : IDL.Func([], [], []),
+  'submitAttendance' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Vec(IDL.Nat), IDL.Text],
+      [IDL.Nat],
+      [],
+    ),
   'updateBatch' : IDL.Func(
       [IDL.Nat, IDL.Text, IDL.Vec(IDL.Nat), IDL.Text, IDL.Text, IDL.Nat],
       [],
@@ -308,6 +351,7 @@ export const idlService = IDL.Service({
         IDL.Text,
         IDL.Text,
         IDL.Nat,
+        IDL.Text,
         IDL.Text,
         IDL.Text,
         IDL.Text,
@@ -410,16 +454,31 @@ export const idlFactory = ({ IDL }) => {
     'dateOfBirth' : IDL.Text,
     'admissionFees' : IDL.Nat,
     'name' : IDL.Text,
-    'guardianRelationship' : IDL.Text,
+    'motherName' : IDL.Text,
     'isActive' : IDL.Bool,
-    'guardianPhone' : IDL.Text,
+    'fatherName' : IDL.Text,
     'gender' : IDL.Text,
     'contactNumber' : IDL.Text,
+    'motherMobile' : IDL.Text,
     'guardianAadhar' : IDL.Text,
     'currentBatchId' : IDL.Opt(IDL.Nat),
-    'guardianName' : IDL.Text,
     'studentAadhar' : IDL.Text,
+    'fatherMobile' : IDL.Text,
     'dateOfAdmission' : IDL.Text,
+  });
+  const AttendanceStatus = IDL.Variant({
+    'present' : IDL.Null,
+    'absent' : IDL.Null,
+    'holiday' : IDL.Null,
+  });
+  const AttendanceRecord = IDL.Record({
+    'id' : IDL.Nat,
+    'status' : AttendanceStatus,
+    'studentId' : IDL.Nat,
+    'date' : IDL.Text,
+    'submittedBy' : IDL.Text,
+    'isLocked' : IDL.Bool,
+    'batchId' : IDL.Nat,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const MonthlyEntry = IDL.Record({
@@ -516,6 +575,7 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           IDL.Text,
           IDL.Text,
+          IDL.Text,
           IDL.Nat,
         ],
         [IDL.Nat],
@@ -540,6 +600,16 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getAllStudents' : IDL.Func([], [IDL.Vec(Student)], ['query']),
+    'getAttendanceForBatch' : IDL.Func(
+        [IDL.Nat, IDL.Text],
+        [IDL.Vec(AttendanceRecord)],
+        ['query'],
+      ),
+    'getAttendanceForStudent' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(AttendanceRecord)],
+        ['query'],
+      ),
     'getBatch' : IDL.Func([IDL.Nat], [IDL.Opt(Batch)], ['query']),
     'getBatchesByDay' : IDL.Func([IDL.Nat], [IDL.Vec(Batch)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -585,6 +655,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'guestLogin' : IDL.Func([IDL.Text, IDL.Text], [AppUser], ['query']),
+    'isAttendanceSubmitted' : IDL.Func(
+        [IDL.Nat, IDL.Text],
+        [IDL.Bool],
+        ['query'],
+      ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'loginUser' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AppUser)], ['query']),
     'markFeeAssignmentPaymentPaid' : IDL.Func(
@@ -592,11 +667,17 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'markHoliday' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [], []),
     'markSoloComplete' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'markSoloPaid' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'markStudentInactive' : IDL.Func([IDL.Nat], [], []),
-  'reactivateStudent' : IDL.Func([IDL.Nat], [], []),
+    'modifyAttendance' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Vec(IDL.Nat), IDL.Text],
+        [],
+        [],
+      ),
     'performYearChangeover' : IDL.Func([IDL.Nat], [], []),
+    'reactivateStudent' : IDL.Func([IDL.Nat], [], []),
     'recordFeePayment' : IDL.Func(
         [
           IDL.Nat,
@@ -617,9 +698,15 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'registerStudentForSolo' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat], [], []),
+    'resetAllData' : IDL.Func([], [], []),
     'resetUserPassword' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'seedDefaultUsers' : IDL.Func([], [], []),
+    'submitAttendance' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Vec(IDL.Nat), IDL.Text],
+        [IDL.Nat],
+        [],
+      ),
     'updateBatch' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Vec(IDL.Nat), IDL.Text, IDL.Text, IDL.Nat],
         [],
@@ -632,6 +719,7 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           IDL.Text,
           IDL.Nat,
+          IDL.Text,
           IDL.Text,
           IDL.Text,
           IDL.Text,

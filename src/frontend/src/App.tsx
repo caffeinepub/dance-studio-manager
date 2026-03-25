@@ -3,6 +3,7 @@ import { useState } from "react";
 import InstitutionHeader from "./components/InstitutionHeader";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "./contexts/AuthContext";
+import AttendancePage from "./pages/AttendancePage";
 import BatchesPage from "./pages/BatchesPage";
 import DashboardPage from "./pages/DashboardPage";
 import FeeCollectionPage from "./pages/FeeCollectionPage";
@@ -18,6 +19,7 @@ export type Page =
   | "dashboard"
   | "students"
   | "batches"
+  | "attendance"
   | "solo"
   | "fees"
   | "feetracker"
@@ -46,6 +48,8 @@ export default function App() {
         return <StudentsPage />;
       case "batches":
         return <BatchesPage />;
+      case "attendance":
+        return <AttendancePage />;
       case "solo":
         return <SoloProgrammesPage />;
       case "fees":

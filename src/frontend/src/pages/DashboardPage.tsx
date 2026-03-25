@@ -10,6 +10,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Calendar,
+  CheckSquare,
   ChevronRight,
   Clock,
   Music,
@@ -21,6 +22,7 @@ import {
 import { useEffect, useState } from "react";
 import type { Page } from "../App";
 import type { Batch, SoloProgramme } from "../backend.d.ts";
+import { useAuth } from "../contexts/AuthContext";
 import {
   useAllSoloRegistrations,
   useAllStudents,
@@ -41,13 +43,9 @@ const DAYS = [
 ];
 const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type ScheduleItem =
   | { kind: "batch"; batch: Batch }
   | { kind: "solo"; programme: SoloProgramme };
-
-// ─── Time helpers ─────────────────────────────────────────────────────────────
 
 function timeToMinutes(time: string): number {
   if (!time || !time.includes(":")) return -1;
@@ -86,8 +84,6 @@ function BatchStudentModal({
             {batch.name} — Students
           </DialogTitle>
         </DialogHeader>
-
-        {/* Assign button */}
         <div className="flex-shrink-0">
           <Button
             onClick={() => {
@@ -100,8 +96,6 @@ function BatchStudentModal({
             Add / Assign Student to this Batch
           </Button>
         </div>
-
-        {/* Student list */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {isLoading ? (
             <div className="space-y-2 py-2">
@@ -133,15 +127,11 @@ function BatchStudentModal({
                       {student.name}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {student.guardianName} · {student.guardianPhone}
+                      {student.fatherName} · {student.fatherMobile}
                     </p>
                   </div>
                   <Badge
-                    className={`text-[10px] px-1.5 py-0 h-4 flex-shrink-0 ${
-                      student.isActive
-                        ? "bg-green-500/15 text-green-600 border-green-500/20"
-                        : "bg-muted text-muted-foreground border-border"
-                    }`}
+                    className={`text-[10px] px-1.5 py-0 h-4 flex-shrink-0 ${student.isActive ? "bg-green-500/15 text-green-600 border-green-500/20" : "bg-muted text-muted-foreground border-border"}`}
                   >
                     {student.isActive ? "Active" : "Inactive"}
                   </Badge>
@@ -150,24 +140,19 @@ function BatchStudentModal({
             </div>
           )}
         </div>
-
-        {/* Close */}
         <div className="flex-shrink-0 pt-2 border-t border-border">
           <Button
             variant="outline"
             onClick={onClose}
             className="w-full border-border gap-2"
           >
-            <X className="w-4 h-4" />
-            Close
+            <X className="w-4 h-4" /> Close
           </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
-
-// ─── Student count hook helper ────────────────────────────────────────────────
 
 function BatchStudentCount({ batchId }: { batchId: bigint }) {
   const { data: students = [], isLoading } = useStudentsInBatch(batchId);
@@ -177,18 +162,18 @@ function BatchStudentCount({ batchId }: { batchId: bigint }) {
   );
 }
 
-// ─── Schedule item card ────────────────────────────────────────────────────────
-
 function ScheduleCard({
   item,
   status,
   soloRegistrationCount,
   onClick,
+  onAttendance,
 }: {
   item: ScheduleItem;
   status: TimeStatus;
   soloRegistrationCount: number;
   onClick?: () => void;
+  onAttendance?: () => void;
 }) {
   const isNext = status === "next";
   const isCurrent = status === "current";
@@ -215,13 +200,7 @@ function ScheduleCard({
   if (item.kind === "batch") {
     const { batch } = item;
     return (
-      <div
-        className={`${containerClass} ${onClick ? "cursor-pointer hover:shadow-md" : ""}`}
-        onClick={onClick}
-        role={onClick ? "button" : undefined}
-        tabIndex={onClick ? 0 : undefined}
-        onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
-      >
+      <div className={containerClass}>
         {isNext && (
           <div className="absolute -top-2.5 left-3">
             <Badge className="bg-primary text-primary-foreground text-[10px] px-2 py-0 h-5 shadow-glow">
@@ -236,38 +215,23 @@ function ScheduleCard({
             </Badge>
           </div>
         )}
-
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
+          <button
+            type="button"
+            className={`flex items-start gap-3 flex-1 min-w-0 text-left ${onClick ? "cursor-pointer" : ""}`}
+            onClick={onClick}
+          >
             <div
-              className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                isPast
-                  ? "bg-muted/50"
-                  : isCurrent
-                    ? "bg-green-600/20 border border-green-600/30"
-                    : isNext
-                      ? "bg-primary/20 border border-primary/30"
-                      : "bg-muted/60"
-              }`}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isPast ? "bg-muted/50" : isCurrent ? "bg-green-600/20 border border-green-600/30" : isNext ? "bg-primary/20 border border-primary/30" : "bg-muted/60"}`}
             >
               <Music
-                className={`w-4 h-4 ${
-                  isPast
-                    ? "text-muted-foreground/50"
-                    : isCurrent
-                      ? "text-green-500"
-                      : isNext
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                }`}
+                className={`w-4 h-4 ${isPast ? "text-muted-foreground/50" : isCurrent ? "text-green-500" : isNext ? "text-primary" : "text-muted-foreground"}`}
               />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3
-                  className={`font-display font-semibold text-sm leading-tight ${
-                    isPast ? "text-muted-foreground" : "text-foreground"
-                  }`}
+                  className={`font-display font-semibold text-sm leading-tight ${isPast ? "text-muted-foreground" : "text-foreground"}`}
                 >
                   {batch.name}
                 </h3>
@@ -285,8 +249,7 @@ function ScheduleCard({
                 </span>
               </div>
             </div>
-          </div>
-
+          </button>
           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
             <Badge
               variant="secondary"
@@ -300,7 +263,6 @@ function ScheduleCard({
             </div>
           </div>
         </div>
-
         <div className="flex flex-wrap gap-1 mt-3 pt-2 border-t border-border/50 items-center justify-between">
           <div className="flex flex-wrap gap-1">
             {batch.daysOfWeek.map((d) => (
@@ -312,18 +274,26 @@ function ScheduleCard({
               </span>
             ))}
           </div>
-          {onClick && (
-            <span className="text-[10px] text-primary/70 flex items-center gap-0.5">
-              <Users className="w-3 h-3" />
-              View Students
-            </span>
+          {onAttendance && !isPast && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[10px] px-2 border-primary/40 text-primary hover:bg-primary/10 gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAttendance();
+              }}
+              data-ocid="dashboard.batch.attendance.button"
+            >
+              <CheckSquare className="w-3 h-3" />
+              Take Attendance
+            </Button>
           )}
         </div>
       </div>
     );
   }
 
-  // Solo item
   const { programme } = item;
   const hasTime =
     !!programme.scheduleTime && programme.scheduleTime.trim() !== "";
@@ -344,36 +314,19 @@ function ScheduleCard({
           </Badge>
         </div>
       )}
-
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <div
-            className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-              isPast
-                ? "bg-muted/50"
-                : isCurrent && hasTime
-                  ? "bg-green-600/20 border border-green-600/30"
-                  : isNext && hasTime
-                    ? "bg-primary/20 border border-primary/30"
-                    : "bg-primary/10 border border-primary/20"
-            }`}
+            className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isPast ? "bg-muted/50" : isCurrent && hasTime ? "bg-green-600/20 border border-green-600/30" : isNext && hasTime ? "bg-primary/20 border border-primary/30" : "bg-primary/10 border border-primary/20"}`}
           >
             <Star
-              className={`w-4 h-4 ${
-                isPast
-                  ? "text-muted-foreground/50"
-                  : isCurrent && hasTime
-                    ? "text-green-500"
-                    : "text-primary"
-              }`}
+              className={`w-4 h-4 ${isPast ? "text-muted-foreground/50" : isCurrent && hasTime ? "text-green-500" : "text-primary"}`}
             />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h3
-                className={`font-display font-semibold text-sm leading-tight ${
-                  isPast ? "text-muted-foreground" : "text-foreground"
-                }`}
+                className={`font-display font-semibold text-sm leading-tight ${isPast ? "text-muted-foreground" : "text-foreground"}`}
               >
                 {programme.name}
               </h3>
@@ -393,7 +346,6 @@ function ScheduleCard({
             )}
           </div>
         </div>
-
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           {soloRegistrationCount > 0 && (
             <div className="flex items-center gap-1 text-muted-foreground text-xs">
@@ -421,7 +373,7 @@ function ScheduleCard({
   );
 }
 
-// ─── Main Dashboard ────────────────────────────────────────────────────────────
+// ─── Main Dashboard ────────────────────────────────────────────────────────────────
 
 interface DashboardPageProps {
   onNavigate: (page: Page) => void;
@@ -431,13 +383,15 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   const today = new Date();
   const todayDay = today.getDay();
   const todayStr = today.toISOString().split("T")[0];
+  const { currentUser } = useAuth();
+  const canTakeAttendance =
+    currentUser?.role === "admin" || currentUser?.role === "staff";
 
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [currentMinutes, setCurrentMinutes] = useState<number>(nowToMinutes());
   const [selectedBatchForModal, setSelectedBatchForModal] =
     useState<Batch | null>(null);
 
-  // Update current time every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentMinutes(nowToMinutes());
@@ -448,19 +402,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   const selectedDayOfWeek = new Date(`${selectedDate}T12:00:00`).getDay();
   const isToday = selectedDate === todayStr;
 
-  // Batch queries
   const { data: todayBatches = [], isLoading: todayBatchLoading } =
     useBatchesByDay(todayDay);
   const { data: selectedBatches = [], isLoading: selectedBatchLoading } =
     useBatchesByDay(selectedDayOfWeek);
-
-  // Solo programme queries
   const { data: todaySoloProgs = [], isLoading: todaySoloLoading } =
     useSoloProgrammesByDay(todayDay);
   const { data: selectedSoloProgs = [], isLoading: selectedSoloLoading } =
     useSoloProgrammesByDay(selectedDayOfWeek);
-
-  // Stats
   const { data: allStudentsData = [], isLoading: studentsLoading } =
     useAllStudents();
   const activeStudentCount = allStudentsData.filter((s) => s.isActive).length;
@@ -473,13 +422,11 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     ? todayBatchLoading || todaySoloLoading
     : selectedBatchLoading || selectedSoloLoading;
 
-  // Filter solos by date (only show active within date range)
   const filteredSolos = displaySolos.filter((prog) => {
     const dateStr = selectedDate;
     return prog.startDate <= dateStr && prog.endDate >= dateStr;
   });
 
-  // Build unified schedule items
   const batchItems: ScheduleItem[] = displayBatches.map((b) => ({
     kind: "batch",
     batch: b,
@@ -489,7 +436,6 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     programme: p,
   }));
 
-  // Separate timed vs untimed items
   const getItemStartTime = (item: ScheduleItem): string => {
     if (item.kind === "batch") return item.batch.startTime;
     return item.programme.scheduleTime || "";
@@ -502,28 +448,22 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     (i) => getItemStartTime(i).trim() === "",
   );
 
-  // Sort timed items by start time
-  timedItems.sort((a, b) => {
-    return (
-      timeToMinutes(getItemStartTime(a)) - timeToMinutes(getItemStartTime(b))
-    );
-  });
+  timedItems.sort(
+    (a, b) =>
+      timeToMinutes(getItemStartTime(a)) - timeToMinutes(getItemStartTime(b)),
+  );
 
-  // Determine status for each timed item
   const getItemEndTime = (item: ScheduleItem): string => {
     if (item.kind === "batch") return item.batch.endTime;
-    return ""; // Solos don't have end time
+    return "";
   };
 
-  // Find the index of the "next" item (first item whose start > now)
   let nextIndex = -1;
   if (isToday) {
     nextIndex = timedItems.findIndex((item) => {
       const start = timeToMinutes(getItemStartTime(item));
       const end = timeToMinutes(getItemEndTime(item));
-      // Not past (end is after now or no end time)
       const isPast = end !== -1 && end < currentMinutes;
-      // Not current (start <= now <= end)
       const isCurrent =
         start <= currentMinutes && (end === -1 || end >= currentMinutes);
       return !isPast && !isCurrent && start > currentMinutes;
@@ -541,11 +481,10 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     return "future";
   };
 
-  const getSoloRegistrationCount = (prog: SoloProgramme): number => {
-    return allSoloRegistrations.filter(
+  const getSoloRegistrationCount = (prog: SoloProgramme): number =>
+    allSoloRegistrations.filter(
       (r) => r.programmeId.toString() === prog.id.toString(),
     ).length;
-  };
 
   const formattedDate = today.toLocaleDateString("en-IN", {
     weekday: "long",
@@ -558,7 +497,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 animate-fade-in">
-      {/* ── Date Header ──────────────────────────────────────────────────── */}
+      {/* Date Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase mb-1">
@@ -578,8 +517,6 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             {formattedDate}
           </p>
         </div>
-
-        {/* Day Picker */}
         <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
           <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <input
@@ -591,7 +528,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
       </div>
 
-      {/* ── Stats ────────────────────────────────────────────────────────── */}
+      {/* Stats */}
       <div className="grid grid-cols-2 gap-4">
         <Card className="bg-card border-border shadow-card">
           <CardContent className="p-4 flex items-center gap-3">
@@ -612,7 +549,6 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card className="bg-card border-border shadow-card">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-accent/15 border border-accent/20 flex items-center justify-center">
@@ -634,7 +570,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         </Card>
       </div>
 
-      {/* ── Schedule ─────────────────────────────────────────────────────── */}
+      {/* Schedule */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -661,7 +597,6 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           </button>
         </div>
 
-        {/* Time legend */}
         {isToday && (
           <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
@@ -722,6 +657,11 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                       ? () => setSelectedBatchForModal(item.batch)
                       : undefined
                   }
+                  onAttendance={
+                    item.kind === "batch" && canTakeAttendance
+                      ? () => onNavigate("attendance")
+                      : undefined
+                  }
                 />
               );
             })}
@@ -752,6 +692,11 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                           ? () => setSelectedBatchForModal(item.batch)
                           : undefined
                       }
+                      onAttendance={
+                        item.kind === "batch" && canTakeAttendance
+                          ? () => onNavigate("attendance")
+                          : undefined
+                      }
                     />
                   );
                 })}
@@ -761,7 +706,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         )}
       </div>
 
-      {/* ── Quick Actions ──────────────────────────────────────────────────── */}
+      {/* Quick Actions */}
       <div>
         <h2 className="font-display font-bold text-foreground text-lg mb-3">
           Quick Actions
@@ -801,7 +746,6 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
       </div>
 
-      {/* ── Batch Student Modal ───────────────────────────────────────────── */}
       {selectedBatchForModal && (
         <BatchStudentModal
           batch={selectedBatchForModal}
