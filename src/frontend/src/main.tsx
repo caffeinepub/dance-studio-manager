@@ -1,8 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-// CRITICAL: AuthProvider MUST remain here. Removing it causes a blank page crash.
-// Every build must preserve this. Do NOT remove AuthProvider from this file.
 import { AuthProvider } from "./contexts/AuthContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import "../index.css";
@@ -19,10 +17,12 @@ declare global {
 
 const queryClient = new QueryClient();
 
+// CRITICAL: AuthProvider MUST wrap App or the entire app will crash with a blank screen.
+// DO NOT remove or replace AuthProvider with InternetIdentityProvider alone.
+// CSS import must be "../index.css" (not "./index.css") - main.tsx is inside src/
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <InternetIdentityProvider>
-      {/* CRITICAL: AuthProvider must wrap App - DO NOT REMOVE */}
       <AuthProvider>
         <App />
       </AuthProvider>
