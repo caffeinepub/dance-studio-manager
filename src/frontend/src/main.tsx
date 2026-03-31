@@ -17,9 +17,6 @@ declare global {
 
 const queryClient = new QueryClient();
 
-// CRITICAL: AuthProvider MUST wrap App or the entire app will crash with a blank screen.
-// DO NOT remove or replace AuthProvider with InternetIdentityProvider alone.
-// CSS import must be "../index.css" (not "./index.css") - main.tsx is inside src/
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <InternetIdentityProvider>

@@ -10,9 +10,9 @@ import Runtime "mo:core/Runtime";
 import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import Migration "migration";
 
-
-
+(with migration = Migration.run)
 actor {
   /// Copied types from original actor
   type Batch = {
@@ -161,7 +161,6 @@ actor {
   let appUsers = Map.empty<Nat, AppUser>();
   var nextAppUserId = 3;
   var appUsersSeeded = false;
-  var dataCleared = false; // One-time data reset flag
 
   // Stable Data Structures
   let batches = Map.empty<Nat, Batch>();
@@ -246,30 +245,6 @@ actor {
       appUsers.add(1, admin);
       appUsers.add(2, guest);
       appUsersSeeded := true;
-
-      // One-time data clear: wipe all student/batch/fee data on fresh deploy
-      if (not dataCleared) {
-        batches.clear();
-        students.clear();
-        batchAssignments.clear();
-        dueCards.clear();
-        soloProgrammes.clear();
-        soloRegistrations.clear();
-        feePayments.clear();
-        feeAssignments.clear();
-        feeAssignmentPayments.clear();
-        yearChangeoverRecords.clear();
-        attendanceRecords.clear();
-        nextBatchId := 1;
-        nextStudentId := 1;
-        nextAssignmentId := 1;
-        nextProgrammeId := 1;
-        nextRegistrationId := 1;
-        nextPaymentId := 1;
-        nextFeeAssignmentId := 1;
-        nextAttendanceId := 1;
-        dataCleared := true;
-      };
     };
   };
 
@@ -295,12 +270,15 @@ actor {
   };
 
   // Admin-only user management functions
-  public shared func createAppUser(
+  public shared ({ caller }) func createAppUser(
     username : Text,
     mobileNumber : Text,
     password : Text,
     role : Text,
   ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can create users");
+    };
     let user : AppUser = {
       id = nextAppUserId;
       username;
@@ -314,13 +292,19 @@ actor {
     user.id;
   };
 
-  // getAllAppUsers - no IC auth needed, frontend handles role checks
-  public query func getAllAppUsers() : async [AppUser] {
+  // Admin-only getAllAppUsers
+  public query ({ caller }) func getAllAppUsers() : async [AppUser] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view all users");
+    };
     appUsers.values().toArray();
   };
 
-  // resetUserPassword - frontend role check handles authorization
-  public shared func resetUserPassword(userId : Nat, newPassword : Text) : async () {
+  // Admin-only resetUserPassword
+  public shared ({ caller }) func resetUserPassword(userId : Nat, newPassword : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can reset passwords");
+    };
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {
@@ -330,8 +314,11 @@ actor {
     };
   };
 
-  // deactivateAppUser - frontend role check handles authorization
-  public shared func deactivateAppUser(userId : Nat) : async () {
+  // Admin-only deactivateAppUser
+  public shared ({ caller }) func deactivateAppUser(userId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can deactivate users");
+    };
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {
@@ -1227,7 +1214,10 @@ actor {
   };
 
   // Data Reset - Admin only
-  public shared func resetAllData() : async () {
+  public shared ({ caller }) func resetAllData() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can reset all data");
+    };
 
     // Clear all data structures except appUsers
     batches.clear();

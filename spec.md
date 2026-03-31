@@ -2,35 +2,50 @@
 
 ## Current State
 
-Full-stack dance studio management app with:
-- Student registration (DOB, Aadhar, guardian details, photo upload, admission fees)
-- Batch management with schedule days/times and monthly fees
-- Batch assignment (AssignBatchDialog in StudentsPage, BatchStudentAssignModal in BatchesPage)
-- Due card system per student per year with monthly entries
-- Solo programmes with schedule and registration
-- Fee collection (smart student-first filtering, Cash/UPI mode, receipt PDF)
-- Fee tracker (Puja, Annual Day, Other fees assigned to multiple students)
-- Year changeover with itemized opening balance carry-forward
-- Reports page (daily cash/UPI summary, fee-type breakdown)
-- Role-based auth (Admin/Staff/Guest) with custom login + auto-logout
-- User management page
-
-**Root problem recurring across all deployments:** `main.tsx` never includes `AuthProvider`. Every deployment regenerates `main.tsx` without it, causing `useAuth()` to throw and crash the app silently, showing only the gradient background.
+- Full-stack app with Motoko backend and React frontend
+- Student model has single guardianName, guardianRelationship, guardianPhone, guardianAadhar fields
+- No attendance system exists
+- main.tsx is missing AuthProvider causing blank page
+- Data reset was requested but data may still exist
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new feature-wise in this build
+- Attendance module: batch-wise per-class-day attendance
+  - AttendanceRecord type with studentId, batchId, date, status (present/absent/holiday), submittedBy, isLocked
+  - Backend: submitAttendance, getAttendanceForBatch, getAttendanceForStudent, markHoliday, modifyAttendance (admin only)
+  - Attendance sidebar menu (Admin and Staff only)
+  - Take Attendance page: select batch, select date (only batch-active days), checkbox list of students, submit locks record
+  - Holiday marking per batch/day
+  - Admin-only modification of submitted attendance
+  - Per-student calendar view with summary ("18 out of 22 classes") and P/A/H markers; non-class days grayed
+  - Per-batch view showing attendance sheet for a date
+  - Dashboard "Take Attendance" button on each batch schedule card
+- Father's details: fatherName, fatherMobile (separate from mother)
+- Mother's details: motherName, motherMobile
+- One-time data reset: clear all students, batches, assignments, due cards, solo programmes, fee payments, fee assignments (preserve admin user)
 
 ### Modify
-- `main.tsx`: Permanently wrap `<App />` with `<AuthProvider>` from `./contexts/AuthContext`. This is the single fix needed to stop blank pages.
-- Add a comment in `main.tsx` clearly marking `AuthProvider` as CRITICAL and must never be removed.
+- Student type: replace guardianName/guardianRelationship/guardianPhone/guardianAadhar with fatherName, fatherMobile, motherName, motherMobile, guardianAadhar (single Aadhar for primary guardian)
+- createStudent and updateStudent backend functions: updated parameters
+- StudentPage registration form and edit form: updated guardian fields
+- App.tsx: add attendance page route
+- main.tsx: wrap app with AuthProvider (CRITICAL - prevents blank page)
 
 ### Remove
-- Nothing
+- guardianRelationship field from student model
+- Single guardianName / guardianPhone fields
 
 ## Implementation Plan
 
-1. Edit `main.tsx` to add `AuthProvider` wrapper around `<App />` with a prominent CRITICAL comment.
-2. Validate frontend build passes.
-3. Deploy.
+1. Update Motoko backend:
+   - New Student type with fatherName, fatherMobile, motherName, motherMobile, guardianAadhar
+   - New AttendanceRecord type and attendance functions
+   - One-time data clear on first deploy (clear students, batches, etc., preserve admin)
+2. Update backend.d.ts with new types
+3. Fix main.tsx: add AuthProvider wrapper
+4. Add AttendancePage component (take attendance, holiday marking, calendar view per student)
+5. Update StudentsPage: new guardian fields in registration and edit forms
+6. Update DashboardPage: "Take Attendance" button on batch schedule cards
+7. Update App.tsx: add attendance page type and route
+8. Update Sidebar: add Attendance menu item (Admin/Staff only)
