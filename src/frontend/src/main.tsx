@@ -17,6 +17,7 @@ declare global {
 
 const queryClient = new QueryClient();
 
+// CRITICAL: AuthProvider MUST wrap App. Do NOT remove or replace it.
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <InternetIdentityProvider>
