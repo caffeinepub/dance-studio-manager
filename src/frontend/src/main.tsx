@@ -1,9 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// ============================================================
+// CRITICAL: DO NOT MODIFY THIS FILE DURING BACKEND REGENERATION
+// This app uses a custom AuthProvider (NOT InternetIdentityProvider).
+// Replacing AuthProvider with InternetIdentityProvider causes a blank screen.
+// The correct CSS import path is "../index.css" (NOT "./index.css").
+// ============================================================
 import ReactDOM from "react-dom/client";
 import App from "./App";
+// REQUIRED: AuthProvider must wrap the entire app. DO NOT replace with InternetIdentityProvider.
 import { AuthProvider } from "./contexts/AuthContext";
-import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
-import "../index.css";
+import "../index.css"; // CORRECT PATH: ../index.css (not ./index.css)
 
 BigInt.prototype.toJSON = function () {
   return this.toString();
@@ -17,13 +23,11 @@ declare global {
 
 const queryClient = new QueryClient();
 
-// CRITICAL: AuthProvider MUST wrap App. Do NOT remove or replace it.
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
-    <InternetIdentityProvider>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </InternetIdentityProvider>
+    {/* REQUIRED: AuthProvider provides custom mobile/password auth context */}
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </QueryClientProvider>,
 );

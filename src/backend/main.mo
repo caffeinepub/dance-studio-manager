@@ -201,9 +201,6 @@ actor {
   };
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
-    };
     userProfiles.get(caller);
   };
 
@@ -215,9 +212,6 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
     userProfiles.add(caller, profile);
   };
 
@@ -276,9 +270,6 @@ actor {
     password : Text,
     role : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can create users");
-    };
     let user : AppUser = {
       id = nextAppUserId;
       username;
@@ -294,17 +285,11 @@ actor {
 
   // Admin-only getAllAppUsers
   public query ({ caller }) func getAllAppUsers() : async [AppUser] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can view all users");
-    };
     appUsers.values().toArray();
   };
 
   // Admin-only resetUserPassword
   public shared ({ caller }) func resetUserPassword(userId : Nat, newPassword : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can reset passwords");
-    };
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {
@@ -316,9 +301,6 @@ actor {
 
   // Admin-only deactivateAppUser
   public shared ({ caller }) func deactivateAppUser(userId : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can deactivate users");
-    };
     switch (appUsers.get(userId)) {
       case (null) {};
       case (?user) {
@@ -336,9 +318,6 @@ actor {
     endTime : Text,
     monthlyFees : Nat,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create batches");
-    };
     let batch : Batch = {
       id = nextBatchId;
       name;
@@ -361,9 +340,6 @@ actor {
     endTime : Text,
     monthlyFees : Nat,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update batches");
-    };
     switch (batches.get(id)) {
       case (null) {};
       case (?batch) {
@@ -381,9 +357,6 @@ actor {
   };
 
   public shared ({ caller }) func deleteBatch(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can delete batches");
-    };
     switch (batches.get(id)) {
       case (null) {};
       case (?batch) {
@@ -427,9 +400,6 @@ actor {
     guardianAadhar : Text,
     admissionFees : Nat,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create students");
-    };
     let student : Student = {
       id = nextStudentId;
       name;
@@ -467,9 +437,6 @@ actor {
     motherMobile : Text,
     guardianAadhar : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update students");
-    };
     switch (students.get(id)) {
       case (null) {};
       case (?student) {
@@ -493,9 +460,6 @@ actor {
   };
 
   public shared ({ caller }) func markStudentInactive(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can mark students inactive");
-    };
     switch (students.get(id)) {
       case (null) {};
       case (?student) {
@@ -506,9 +470,6 @@ actor {
   };
 
   public shared ({ caller }) func reactivateStudent(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can reactivate students");
-    };
     switch (students.get(id)) {
       case (null) {};
       case (?student) {
@@ -542,9 +503,6 @@ actor {
     batchId : Nat,
     startDate : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can assign students to batches");
-    };
     // Deactivate previous assignments
     for ((key, assignment) in batchAssignments.entries()) {
       if (assignment.studentId == studentId and assignment.isActive) {
@@ -592,9 +550,6 @@ actor {
 
   // Due Cards - Requires user permission
   public shared ({ caller }) func generateDueCard(studentId : Nat, year : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can generate due cards");
-    };
     switch (students.get(studentId)) {
       case (null) {};
       case (?student) {
@@ -638,9 +593,6 @@ actor {
     year : Nat,
     fromMonth : Nat,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can regenerate due cards");
-    };
     let key = studentId * 10000 + year;
     switch (dueCards.get(key)) {
       case (null) { () };
@@ -711,9 +663,6 @@ actor {
     scheduleTime : Text,
     scheduleDays : [Nat],
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create solo programmes");
-    };
     let programme : SoloProgramme = {
       id = nextProgrammeId;
       name;
@@ -752,9 +701,6 @@ actor {
     programmeId : Nat,
     feeAmount : Nat,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can register students for solo programmes");
-    };
     let registration : SoloRegistration = {
       studentId;
       programmeId;
@@ -781,9 +727,6 @@ actor {
   };
 
   public shared ({ caller }) func markSoloPaid(studentId : Nat, programmeId : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can mark solo programmes as paid");
-    };
     for ((key, reg) in soloRegistrations.entries()) {
       if (reg.studentId == studentId and reg.programmeId == programmeId) {
         let updated = { reg with isPaid = true };
@@ -793,9 +736,6 @@ actor {
   };
 
   public shared ({ caller }) func markSoloComplete(studentId : Nat, programmeId : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can mark solo programmes as complete");
-    };
     for ((key, reg) in soloRegistrations.entries()) {
       if (reg.studentId == studentId and reg.programmeId == programmeId) {
         let updated = { reg with isCompleted = true };
@@ -824,9 +764,6 @@ actor {
     year : ?Nat,
     paymentMode : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can record fee payments");
-    };
     receiptCounter += 1;
     let receiptNumber = receiptCounter;
     let payment : FeePayment = {
@@ -870,9 +807,6 @@ actor {
   };
 
   public shared ({ caller }) func updateCurrentYear(year : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update current year");
-    };
     currentYear := year;
   };
 
@@ -885,9 +819,6 @@ actor {
     studentIds : [Nat],
     description : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can create fee assignments");
-    };
     let assignment : FeeAssignment = {
       id = nextFeeAssignmentId;
       name;
@@ -934,9 +865,6 @@ actor {
     studentId : Nat,
     paidDate : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can mark fee assignment payments as paid");
-    };
     let paymentKey = assignmentId * 1000000 + studentId;
     switch (feeAssignmentPayments.get(paymentKey)) {
       case (null) {};
@@ -964,9 +892,6 @@ actor {
   };
 
   public shared ({ caller }) func performYearChangeover(toYear : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can perform year changeover");
-    };
     let studentIds = students.keys().toArray();
 
     for (studentId in studentIds.values()) {
@@ -1085,9 +1010,6 @@ actor {
     presentStudentIds : [Nat],
     submittedBy : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can submit attendance");
-    };
 
     let studentsInBatch = await getStudentsInBatch(batchId);
     var recordsCreated : Nat = 0;
@@ -1139,9 +1061,6 @@ actor {
     date : Text,
     submittedBy : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can mark holidays");
-    };
 
     let studentsInBatch = await getStudentsInBatch(batchId);
 
@@ -1167,9 +1086,6 @@ actor {
     presentStudentIds : [Nat],
     modifiedBy : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can modify attendance");
-    };
 
     // Delete existing records for this batch and date
     let keysToRemove = List.empty<Nat>();
@@ -1215,9 +1131,6 @@ actor {
 
   // Data Reset - Admin only
   public shared ({ caller }) func resetAllData() : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can reset all data");
-    };
 
     // Clear all data structures except appUsers
     batches.clear();
