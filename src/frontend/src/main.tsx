@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // ============================================================
-// CRITICAL: DO NOT CHANGE AuthProvider TO InternetIdentityProvider
-// This app uses a CUSTOM mobile/password login system (NOT Internet Identity).
-// Replacing AuthProvider with InternetIdentityProvider WILL cause a blank page.
-// The correct import is: import { AuthProvider } from "./contexts/AuthContext"
+// CRITICAL: DO NOT REPLACE AuthProvider WITH InternetIdentityProvider
+// This app uses a CUSTOM mobile/password login system, NOT Internet Identity.
+// Replacing AuthProvider WILL cause a blank/broken page on load.
+// The CSS import must be "../index.css" (one level up from src/).
 // ============================================================
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -24,7 +24,7 @@ const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
-    {/* CRITICAL: AuthProvider MUST wrap App. Do NOT replace with InternetIdentityProvider. */}
+    {/* CRITICAL: AuthProvider MUST stay here. Do NOT swap for InternetIdentityProvider. */}
     <AuthProvider>
       <App />
     </AuthProvider>
